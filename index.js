@@ -1,6 +1,9 @@
 
 const Gtil = require('@gsfjohnson/gtil');
 const Lignum = require('@gsfjohnson/lignum');
+const NodePath = require('node:path');
+const NodeFs = require('node:fs');
+const NodeOs = require('node:os');
 const NodeUtil = require('node:util');
 const NodeFilePromise = require('node:fs/promises');
 
