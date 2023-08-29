@@ -8,10 +8,12 @@ const Config = require('../index');
 //const errorRequire = name => require(`../lib/error/${name}`);
 //const TestError = errorRequire('TestError');
 
-describe('Config', function()
+let ext, exts = ['json','ini'];
+while ( ext = exts.shift() )
+describe('Config: '+ext, function()
 {
   let cfg;
-  let fn = '/tmp/chatja_test_config.json';
+  let fn = '/tmp/node-config_test.'+ext;
 
   describe('load from does-not-exist', () =>
   {
