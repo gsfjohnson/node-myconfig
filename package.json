@@ -1,14 +1,17 @@
 {
-  "name": "@gsfjohnson/config",
-  "version": "0.0.1",
-  "description": "Config Object",
+  "name": "@gsfjohnson/myconfig",
+  "version": "0.0.2",
+  "description": "MyConfig Object",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/mocha/bin/mocha"
+    "test": "mocha"
   },
   "author": "gsfjohnson",
   "license": "UNLICENSED",
-  "homepage": "https://github.com/gsfjohnson/node-config#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gsfjohnson/node-myconfig.git"
+  },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/gsfjohnson"
   },
@@ -16,11 +19,9 @@
     "node": ">=12.9.0",
     "npm": ">=6.0.0"
   },
-  "devDependencies": {
-    "mocha": "^9.2.2"
-  },
   "dependencies": {
-    "@gsfjohnson/gtil": "0.1.0",
-    "@gsfjohnson/lignum": "^0.1.5"
+    "@gsfjohnson/gtil": "0.1.4",
+    "@gsfjohnson/lignum": "^0.1.5",
+    "@gsfjohnson/mypath": "^1.0.6"
   }
 }

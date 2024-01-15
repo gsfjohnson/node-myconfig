@@ -1,40 +1,27 @@
 
-const Gtil = require('@gsfjohnson/gtil');
-const Lignum = require('@gsfjohnson/lignum');
 const NodePath = require('node:path');
 const NodeFs = require('node:fs');
 const NodeOs = require('node:os');
 const NodeUtil = require('node:util');
 const NodeFilePromise = require('node:fs/promises');
 
-class DebugLog
-{
-  static log;
-}
+const Gtil = require('@gsfjohnson/gtil');
+const lig = require('./lignum');
 
-let lig;
-if ( ! DebugLog.log ) {
-  lig = DebugLog.log = new Lignum({
-    env: 'CONFIG_LIGNUM',
-    channel: 'config',
-    datefmt: 'MM-DD HH:mm:ss.SSS',
-  });
-}
-else lig = DebugLog.log;
 
-class Config
+class MyConfig
 {
   static pd = true; // property debug
-  static app_name = 'config';
+  static app_name = 'MyConfig';
   #sd;
 
   constructor(opts)
   {
-    const ld = { cl: 'Config', fx: '.constructor()' };
+    const ld = { cl: 'MyConfig', fx: '.constructor()' };
     lig.debug(ld,'←',opts);
 
     // initial
-    const id = this.id = 'cfg_'+Gtil.rand_string(2);
+    const id = this.id = 'mycfg_'+Gtil.rand_string(2);
     const sd = this.#sd = {
       cfg: {},
       dirty: [],
@@ -43,7 +30,7 @@ class Config
 
     // sanity: opts
     if ( Buffer.isBuffer(opts) )
-      opts = { cfg: Config.deserialize(opts) };
+      opts = { cfg: MyConfig.deserialize(opts) };
     if ( ! Gtil.isPureObject(opts) ) opts = {};
     if ( Gtil.isPureObject(opts.cfg) ) sd.cfg = opts.cfg;
 
@@ -51,7 +38,7 @@ class Config
     delete sd.constructing;
 
     // complete
-    lig.debug(ld,'complete');
+    lig.debug(ld,'=>',this);
   }
 
   set(key,value)
@@ -64,7 +51,7 @@ class Config
     else this.raw[key] = value;
     // set dirty
     if ( ! sd.constructing ) {
-      Config.setDirty(sd.dirty,key);
+      MyConfig.setDirty(sd.dirty,key);
       //this.updated = new Date();
     }
     return true;
@@ -80,7 +67,7 @@ class Config
 
   serialize(cfg)
   {
-    // XXX: serialize config for save()
+    // XXX: serialize MyConfig for save()
     let obj = this.raw;
     if ( ! Gtil.isPureObject(obj) ) obj = {};
     let cfgString = JSON.stringify(obj);
@@ -90,11 +77,11 @@ class Config
 
   static deserialize(cfgString)
   {
-    const ld = { cl: 'Config', fx: '.deserialize()' };
+    const ld = { cl: 'MyConfig', fx: '.deserialize()' };
     lig.debug(ld,cfgString);
 
-    // reinstanciate config from load()
-    //const cfg = new Config();
+    // reinstanciate MyConfig from load()
+    //const cfg = new MyConfig();
 
     // XXX: deserialize
     let out = JSON.parse(cfgString);
@@ -107,11 +94,11 @@ class Config
 
   async saveToFile(fn)
   {
-    const ld = { cl: 'Config', fx: '.saveToFile()' };
+    const ld = { cl: 'MyConfig', fx: '.saveToFile()' };
     lig.debug(ld,'←',fn);
     const sd = this.#sd;
     if ( ! fn ) {
-      fn = Config.os_local_path({ mkdir: 1, fn: 'app.json' });
+      fn = MyConfig.os_local_path({ mkdir: 1, fn: 'app.json' });
       lig.debug(ld,'fn:',fn);
     }
     await NodeFilePromise.writeFile( fn, this.serialize() );
@@ -124,14 +111,14 @@ class Config
 
   static async loadFromFile(fn,ignore_not_found=true)
   {
-    const ld = { cl: 'Config', fx: '.loadFromFile()' };
+    const ld = { cl: 'MyConfig', fx: '.loadFromFile()' };
     lig.debug(ld,'←',fn);
-    
+
     // catch thrown errors
     let buff;
     try {
       if ( ! fn ) {
-        fn = Config.os_local_path({ mkdir: 1, fn: 'app.json' });
+        fn = MyConfig.os_local_path({ mkdir: 1, fn: 'app.json' });
         lig.debug(ld,'fn:',fn);
       }
       buff = await NodeFilePromise.readFile(fn);
@@ -143,10 +130,10 @@ class Config
     }
 
     // deserialize
-    const cfg = new Config(buff);
+    const cfg = new MyConfig(buff);
 
     // success
-    lig.debug(ld,cfg);
+    lig.debug(ld,'=>',cfg);
     return cfg;
   }
 
@@ -161,7 +148,7 @@ class Config
     const sd = this.#sd;
     if ( ! val ) {
       sd.dirty = [];
-      if ( Config.pd ) lig.debug(ld,'⇐',val);
+      if ( MyConfig.pd ) lig.debug(ld,'⇐',val);
     }
   }
 
@@ -170,7 +157,7 @@ class Config
     const ld = { cl: this, fx: '.dirty' };
     const sd = this.#sd;
     let out = sd.dirty.length;
-    if ( Config.pd ) lig.debug(ld,'⇒',out);
+    if ( MyConfig.pd ) lig.debug(ld,'⇒',out);
     return out;
   }
 
@@ -234,4 +221,4 @@ class Config
   }
 }
 
-module.exports = Config;
+module.exports = MyConfig;
