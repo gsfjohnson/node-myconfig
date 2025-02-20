@@ -1,7 +1,7 @@
 {
   "name": "@gsfjohnson/myconfig",
-  "version": "0.0.2",
-  "description": "MyConfig Object",
+  "version": "0.1.1",
+  "description": "MyConfig -- api to read write key values to local filesystem config file",
   "main": "index.js",
   "scripts": {
     "test": "mocha"
@@ -19,9 +19,7 @@
     "node": ">=12.9.0",
     "npm": ">=6.0.0"
   },
-  "dependencies": {
-    "@gsfjohnson/gtil": "0.1.4",
-    "@gsfjohnson/lignum": "^0.1.5",
-    "@gsfjohnson/mypath": "^1.0.6"
+  "optionalDependencies": {
+    "debug": "^4.4.0"
   }
 }
