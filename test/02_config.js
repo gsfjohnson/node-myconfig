@@ -3,45 +3,22 @@ const NodePath = require('path');
 const NodeOs = require('os');
 const Assert = require('assert');
 
-const MyPath_Local = require('@gsfjohnson/mypath/local');
 const MyConfig = require('../index');
 
 
 describe('MyConfig', function()
 {
   let cfg;
-  let json_fn; // = '/tmp/chatja_test_config.json';
+  let cfg_fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.json' );
 
   describe('initial', () =>
   {
 
-    it('json_fn = new MyPath_Local({ root: $tmpdir/$uuid, key: test_config.json })', function()
+    it('cfg_fn = '+ cfg_fn, function(){});
+
+    it.skip('cfg = MyConfig.loadFromFile( cfg_fn, false ) --> instanceof MyConfig', async function()
     {
-      const result = new MyPath_Local({ root: '$tmpdir/$uuid', key: 'test_config.json' });
-
-      // test result
-      if ( ! (result instanceof MyPath_Local) )
-        throw new TypeError('result is '+result+' (should be MyPath_Local)');
-
-      // success
-      json_fn = result;
-    });
-
-    it('json_fn.mkdir() --> true', async function()
-    {
-      const result = await json_fn.mkdir();
-
-      // test result
-      if ( result !== true )
-        throw new TypeError('result is '+result+' (should be True)');
-
-      // success
-      //json_fn = ''+result;
-    });
-
-    it.skip('cfg = MyConfig.loadFromFile( json_fn, false ) --> instanceof MyConfig', async function()
-    {
-      let fn = ''+json_fn;
+      let fn = ''+cfg_fn;
       const result = await MyConfig.loadFromFile( fn, false );
 
       const expected = true;
@@ -81,18 +58,6 @@ describe('MyConfig', function()
       // success
     });
 
-    it('cfg.get(whatever) --> value', async function()
-    {
-      const result = cfg.get('whatever');
-
-      // test result
-      const expected = 'value';
-      const actual = result;
-      Assert.equal( actual, expected );
-
-      // success
-    });
-
     it('cfg.dirty --> 1', async function()
     {
       // test result
@@ -104,9 +69,9 @@ describe('MyConfig', function()
     });
 
 
-    it('cfg.saveToFile( json_fn ) --> true', async function()
+    it('cfg.saveToFile( cfg_fn ) --> true', async function()
     {
-      let fn = ''+json_fn;
+      let fn = ''+cfg_fn;
       const result = await cfg.saveToFile( fn );
 
       // test result
@@ -127,9 +92,9 @@ describe('MyConfig', function()
       // success
     });
 
-    it('cfg = MyConfig.loadFromFile( json_fn ) --> instanceof MyConfig', async function()
+    it('cfg = MyConfig.loadFromFile( cfg_fn ) --> instanceof MyConfig', async function()
     {
-      let fn = ''+json_fn;
+      let fn = ''+cfg_fn;
       const result = await MyConfig.loadFromFile( fn );
 
       // test result
@@ -139,6 +104,18 @@ describe('MyConfig', function()
 
       // success
       cfg = result;
+    });
+
+    it('cfg.get(whatever) --> value', async function()
+    {
+      const result = cfg.get('whatever');
+
+      // test result
+      const expected = 'value';
+      const actual = result;
+      Assert.equal( actual, expected );
+
+      // success
     });
 
   });

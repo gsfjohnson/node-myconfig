@@ -1,12 +1,11 @@
 
-const MyPath_Local = require('@gsfjohnson/mypath/local');
-
+const NodeOs = require('node:os');
+const NodePath = require('node:path');
 const MyConfig = require('../index');
 
 async function main()
 {
-  let json_fn = new MyPath_Local({ root: '$tmpdir', key: 'test_cfg.json' });
-  let fn = ''+json_fn;
+  let fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.json' );
   console.log('*** fn:',fn);
 
   console.log('*** cfg = await MyConfig.loadFromFile('+fn+') ...');

@@ -5,8 +5,10 @@ const NodeOs = require('node:os');
 const NodeUtil = require('node:util');
 const NodeFilePromise = require('node:fs/promises');
 
-const Gtil = require('@gsfjohnson/gtil');
-const lig = require('./lignum');
+const Util = require('./util');
+
+let debug; try { debug = require('debug')('myconfig'); }
+catch (e) { debug = function(){}; } // empty stub
 
 
 class MyConfig
@@ -18,10 +20,10 @@ class MyConfig
   constructor(opts)
   {
     const ld = { cl: 'MyConfig', fx: '.constructor()' };
-    lig.debug(ld,'←',opts);
+    debug(ld.fx,'←',opts);
 
     // initial
-    const id = this.id = 'mycfg_'+Gtil.rand_string(2);
+    const id = this.id = 'mycfg_'+Util.rand_string(2);
     const sd = this.#sd = {
       cfg: {},
       dirty: [],
@@ -31,21 +33,21 @@ class MyConfig
     // sanity: opts
     if ( Buffer.isBuffer(opts) )
       opts = { cfg: MyConfig.deserialize(opts) };
-    if ( ! Gtil.isPureObject(opts) ) opts = {};
-    if ( Gtil.isPureObject(opts.cfg) ) sd.cfg = opts.cfg;
+    if ( ! Util.isPureObject(opts) ) opts = {};
+    if ( Util.isPureObject(opts.cfg) ) sd.cfg = opts.cfg;
 
     // process updated after construction phase
     delete sd.constructing;
 
     // complete
-    lig.debug(ld,'=>',this);
+    debug(ld.fx,'=>',this);
   }
 
   set(key,value)
   {
     const ld = { cl: this, fx: '.set()' };
     const sd = this.#sd;
-    lig.debug(ld,key,'<=',value);
+    debug(ld.fx,key,'<=',value);
     if ( value === undefined )
       delete this.raw[key];
     else this.raw[key] = value;
@@ -61,7 +63,7 @@ class MyConfig
   {
     const ld = { cl: this, fx: '.get()' };
     const value = this.raw[key];
-    lig.debug(ld,key,'⇒',value);
+    debug(ld.fx,key,'⇒',value);
     return value;
   }
 
@@ -69,7 +71,7 @@ class MyConfig
   {
     // XXX: serialize MyConfig for save()
     let obj = this.raw;
-    if ( ! Gtil.isPureObject(obj) ) obj = {};
+    if ( ! Util.isPureObject(obj) ) obj = {};
     let cfgString = JSON.stringify(obj);
     // success
     return cfgString;
@@ -78,7 +80,7 @@ class MyConfig
   static deserialize(cfgString)
   {
     const ld = { cl: 'MyConfig', fx: '.deserialize()' };
-    lig.debug(ld,cfgString);
+    debug(ld.fx,cfgString);
 
     // reinstanciate MyConfig from load()
     //const cfg = new MyConfig();
@@ -88,43 +90,43 @@ class MyConfig
     //console.log('deserialize:',cfg.raw);
 
     // success
-    lig.debug(ld,'⇒',out);
+    debug(ld.fx,'⇒',out);
     return out;
   }
 
   async saveToFile(fn)
   {
     const ld = { cl: 'MyConfig', fx: '.saveToFile()' };
-    lig.debug(ld,'←',fn);
+    debug(ld.fx,'←',fn);
     const sd = this.#sd;
     if ( ! fn ) {
       fn = MyConfig.os_local_path({ mkdir: 1, fn: 'app.json' });
-      lig.debug(ld,'fn:',fn);
+      debug(ld.fx,'fn:',fn);
     }
     await NodeFilePromise.writeFile( fn, this.serialize() );
     // success
     this.dirty = null;
     const out = true;
-    lig.debug(ld,out);
+    debug(ld.fx,out);
     return out;
   }
 
   static async loadFromFile(fn,ignore_not_found=true)
   {
     const ld = { cl: 'MyConfig', fx: '.loadFromFile()' };
-    lig.debug(ld,'←',fn);
+    debug(ld.fx,'←',fn);
 
     // catch thrown errors
     let buff;
     try {
       if ( ! fn ) {
         fn = MyConfig.os_local_path({ mkdir: 1, fn: 'app.json' });
-        lig.debug(ld,'fn:',fn);
+        debug(ld.fx,'fn:',fn);
       }
       buff = await NodeFilePromise.readFile(fn);
     }
     catch (e) {
-      lig.error(ld,'caught:',e);
+      debug(ld.fx,'caught:',e);
       if ( ignore_not_found && e.code == 'ENOENT' ) {} // ignore
       else throw e;
     }
@@ -133,7 +135,7 @@ class MyConfig
     const cfg = new MyConfig(buff);
 
     // success
-    lig.debug(ld,'=>',cfg);
+    debug(ld.fx,'=>',cfg);
     return cfg;
   }
 
@@ -148,7 +150,7 @@ class MyConfig
     const sd = this.#sd;
     if ( ! val ) {
       sd.dirty = [];
-      if ( MyConfig.pd ) lig.debug(ld,'⇐',val);
+      if ( MyConfig.pd ) debug(ld.fx,'⇐',val);
     }
   }
 
@@ -157,7 +159,7 @@ class MyConfig
     const ld = { cl: this, fx: '.dirty' };
     const sd = this.#sd;
     let out = sd.dirty.length;
-    if ( MyConfig.pd ) lig.debug(ld,'⇒',out);
+    if ( MyConfig.pd ) debug(ld.fx,'⇒',out);
     return out;
   }
 
@@ -171,7 +173,7 @@ class MyConfig
   static os_local_path(opts)
   {
     const ld = { cl: 'Cj', fx: '.os_local_path()' };
-    lig.debug(ld,opts);
+    debug(ld.fx,opts);
 
     // initial
     let out;
@@ -179,7 +181,7 @@ class MyConfig
     let os_homedir = NodeOs.homedir();
 
     // sanity: opts
-    if ( ! Gtil.isPureObject(opts) ) opts = {};
+    if ( ! Util.isPureObject(opts) ) opts = {};
 
     // operation
     let path;
@@ -198,16 +200,16 @@ class MyConfig
 
     // mkdir
     if ( opts.mkdir ) {
-      lig.debug(ld,'mkdirSync:',path);
+      debug(ld.fx,'mkdirSync:',path);
       NodeFs.mkdirSync(path, { recursive: true });
     }
 
     // build final path
-    if ( ! Gtil.isString(opts.fn) ) out = path;
+    if ( ! Util.isString(opts.fn) ) out = path;
     else out = NodePath.join( path, opts.fn );
 
     // return
-    lig.debug(ld,'⇒',out);
+    debug(ld.fx,'⇒',out);
     return out;
   }
 
