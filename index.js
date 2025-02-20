@@ -40,14 +40,14 @@ class MyConfig
     delete sd.constructing;
 
     // complete
-    debug(ld.fx,'=>',this);
+    debug(ld.fx,'→',this);
   }
 
   set(key,value)
   {
     const ld = { cl: this, fx: '.set()' };
     const sd = this.#sd;
-    debug(ld.fx,key,'<=',value);
+    debug(ld.fx,key,'←',value);
     if ( value === undefined )
       delete this.raw[key];
     else this.raw[key] = value;
@@ -63,7 +63,7 @@ class MyConfig
   {
     const ld = { cl: this, fx: '.get()' };
     const value = this.raw[key];
-    debug(ld.fx,key,'⇒',value);
+    debug(ld.fx,key,'→',value);
     return value;
   }
 
@@ -77,20 +77,20 @@ class MyConfig
     return cfgString;
   }
 
-  static deserialize(cfgString)
+  static deserialize(str)
   {
     const ld = { cl: 'MyConfig', fx: '.deserialize()' };
-    debug(ld.fx,cfgString);
+    debug(ld.fx,'←',str);
 
     // reinstanciate MyConfig from load()
     //const cfg = new MyConfig();
 
     // XXX: deserialize
-    let out = JSON.parse(cfgString);
+    let out = JSON.parse(str);
     //console.log('deserialize:',cfg.raw);
 
     // success
-    debug(ld.fx,'⇒',out);
+    debug(ld.fx,'→',out);
     return out;
   }
 
@@ -107,7 +107,7 @@ class MyConfig
     // success
     this.dirty = null;
     const out = true;
-    debug(ld.fx,out);
+    debug(ld.fx,'→',out);
     return out;
   }
 
@@ -135,7 +135,7 @@ class MyConfig
     const cfg = new MyConfig(buff);
 
     // success
-    debug(ld.fx,'=>',cfg);
+    debug(ld.fx,'→',cfg);
     return cfg;
   }
 
@@ -165,6 +165,8 @@ class MyConfig
 
   static setDirty(arr,key)
   {
+    const ld = { fx: '.setDirty()' };
+    debug(ld.fx,'←',key);
     if ( ! Array.isArray(arr) ) return;
     if ( arr.includes(key) ) return;
     arr.push(key);
@@ -173,7 +175,7 @@ class MyConfig
   static os_local_path(opts)
   {
     const ld = { cl: 'Cj', fx: '.os_local_path()' };
-    debug(ld.fx,opts);
+    debug(ld.fx,'←',opts);
 
     // initial
     let out;
@@ -209,7 +211,7 @@ class MyConfig
     else out = NodePath.join( path, opts.fn );
 
     // return
-    debug(ld.fx,'⇒',out);
+    debug(ld.fx,'→',out);
     return out;
   }
 
