@@ -1,6 +1,6 @@
 {
   "name": "@gsfjohnson/myconfig",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MyConfig -- api to read write key values to local filesystem config file",
   "main": "index.js",
   "scripts": {
