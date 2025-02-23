@@ -13,11 +13,11 @@ async function main()
   console.log('*** cfg.set(whatever,23) ...');
   cfg.set( 'whatever', 23 );
 
-  let fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.json' );
-  console.log('*** fn:',fn);
+  let tmp_fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
+  console.log('*** tmp_fn:',tmp_fn);
 
-  console.log(`*** await cfg.saveToFile(${fn}) ...`);
-  let result = await cfg.saveToFile( fn );
+  console.log(`*** await cfg.saveToFile(tmp_fn) ...`);
+  let result = await cfg.saveToFile(tmp_fn);
   console.log('result:',result);
 
 }

@@ -1,11 +1,11 @@
 
 const NodePath = require('node:path');
-const NodeFs = require('node:fs');
-const NodeOs = require('node:os');
 const NodeUtil = require('node:util');
-const NodeFilePromise = require('node:fs/promises');
+const NodeFsPromise = require('node:fs/promises');
 
 const Util = require('./util');
+const Ini = require('./ini');
+const Json = require('./json');
 
 let debug; try { debug = require('debug')('myconfig'); }
 catch (e) { debug = function(){}; } // empty stub
@@ -31,8 +31,6 @@ class MyConfig
     };
 
     // sanity: opts
-    if ( Buffer.isBuffer(opts) )
-      opts = { cfg: MyConfig.deserialize(opts) };
     if ( ! Util.isPureObject(opts) ) opts = {};
     if ( Util.isPureObject(opts.cfg) ) sd.cfg = opts.cfg;
 
@@ -67,43 +65,25 @@ class MyConfig
     return value;
   }
 
-  serialize(cfg)
-  {
-    // XXX: serialize MyConfig for save()
-    let obj = this.raw;
-    if ( ! Util.isPureObject(obj) ) obj = {};
-    let cfgString = JSON.stringify(obj);
-    // success
-    return cfgString;
-  }
-
-  static deserialize(str)
-  {
-    const ld = { cl: 'MyConfig', fx: '.deserialize()' };
-    debug(ld.fx,'←',str);
-
-    // reinstanciate MyConfig from load()
-    //const cfg = new MyConfig();
-
-    // XXX: deserialize
-    let out = JSON.parse(str);
-    //console.log('deserialize:',cfg.raw);
-
-    // success
-    debug(ld.fx,'→',out);
-    return out;
-  }
-
   async saveToFile(fn)
   {
     const ld = { cl: 'MyConfig', fx: '.saveToFile()' };
     debug(ld.fx,'←',fn);
     const sd = this.#sd;
+    let length = Object.keys(sd.cfg).length;
     if ( ! fn ) {
       fn = MyConfig.os_local_path({ mkdir: 1, fn: 'app.json' });
       debug(ld.fx,'fn:',fn);
     }
-    await NodeFilePromise.writeFile( fn, this.serialize() );
+    let str, ext = NodePath.extname(fn);
+    if ( ext != '.ini' && ext != '.json' )
+      throw new Error(`only ini/json supported: ${ext}`);
+    // encode
+    if (length==0) str = '';
+    else if (ext=='.ini') str = Ini.encode(sd.cfg);
+    else if (ext=='.json') str = Json.encode(sd.cfg);
+    // write
+    await NodeFsPromise.writeFile( fn, str );
     // success
     this.dirty = null;
     const out = true;
@@ -117,13 +97,16 @@ class MyConfig
     debug(ld.fx,'←',fn);
 
     // catch thrown errors
-    let buff;
+    let ext, buff;
     try {
       if ( ! fn ) {
-        fn = MyConfig.os_local_path({ mkdir: 1, fn: 'app.json' });
+        fn = Util.os_local_path({ mkdir: 1, fn: 'app.json' });
         debug(ld.fx,'fn:',fn);
       }
-      buff = await NodeFilePromise.readFile(fn);
+      ext = NodePath.extname(fn);
+      if ( ext != '.ini' && ext != '.json' )
+        throw new Error(`invalid ext, only ini/json supported: ${ext}`)
+      buff = await NodeFsPromise.readFile(fn);
     }
     catch (e) {
       debug(ld.fx,'caught:',e);
@@ -132,7 +115,13 @@ class MyConfig
     }
 
     // deserialize
-    const cfg = new MyConfig(buff);
+    let obj;
+    if ( ext == '.ini' ) obj = Ini.decode(buff);
+    else if ( ext == '.json' ) obj = Json.decode(buff);
+    if (!Util.isPureObject(obj)) throw new Error(`failed to parse ${fn}`);
+
+    // instanciate
+    const cfg = new MyConfig({ cfg: obj });
 
     // success
     debug(ld.fx,'→',cfg);
@@ -170,49 +159,6 @@ class MyConfig
     if ( ! Array.isArray(arr) ) return;
     if ( arr.includes(key) ) return;
     arr.push(key);
-  }
-
-  static os_local_path(opts)
-  {
-    const ld = { cl: 'Cj', fx: '.os_local_path()' };
-    debug(ld.fx,'←',opts);
-
-    // initial
-    let out;
-    let os_platform = NodeOs.platform();
-    let os_homedir = NodeOs.homedir();
-
-    // sanity: opts
-    if ( ! Util.isPureObject(opts) ) opts = {};
-
-    // operation
-    let path;
-    switch (os_platform)
-    {
-      case 'win32':
-        path = NodePath.join(os_homedir,'AppData','Local',Config.app_name);
-        break;
-      case 'darwin':
-      case 'linux':
-        path = NodePath.join(os_homedir,'.config',Config.app_name);
-        break;
-      default:
-        throw new Error('unsupported platform: '+ os_platform);
-    }
-
-    // mkdir
-    if ( opts.mkdir ) {
-      debug(ld.fx,'mkdirSync:',path);
-      NodeFs.mkdirSync(path, { recursive: true });
-    }
-
-    // build final path
-    if ( ! Util.isString(opts.fn) ) out = path;
-    else out = NodePath.join( path, opts.fn );
-
-    // return
-    debug(ld.fx,'→',out);
-    return out;
   }
 
   [NodeUtil.inspect.custom](depth, options)

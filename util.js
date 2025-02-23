@@ -1,6 +1,10 @@
 
+const NodePath = require('node:path');
+const NodeOs = require('node:os');
 const NodeCrypto = require('node:crypto');
 const NodeStream = require('node:stream');
+const NodeFs = require('node:fs');
+//const NodeFsPromise = require('node:fs/promises');
 
 let debug; try { debug = require('debug')('myconfig:util'); }
 catch (e) { debug = function(){}; } // empty stub
@@ -240,6 +244,49 @@ class Util
     return dir;
   }
 
+  static os_local_path(opts)
+  {
+    const ld = { fx: '.os_local_path()' };
+    debug(ld.fx,'←',opts);
+
+    // initial
+    let out;
+    let os_platform = NodeOs.platform();
+    let os_homedir = NodeOs.homedir();
+
+    // sanity: opts
+    if ( ! Util.isPureObject(opts) ) opts = {};
+
+    // operation
+    let path;
+    switch (os_platform)
+    {
+      case 'win32':
+        path = NodePath.join(os_homedir,'AppData','Local',Config.app_name);
+        break;
+      case 'darwin':
+      case 'linux':
+        path = NodePath.join(os_homedir,'.config',Config.app_name);
+        break;
+      default:
+        throw new Error('unsupported platform: '+ os_platform);
+    }
+
+    // mkdir
+    if ( opts.mkdir ) {
+      debug(ld.fx,'mkdirSync:',path);
+      NodeFs.mkdirSync(path, { recursive: true });
+    }
+
+    // build final path
+    if ( ! Util.isString(opts.fn) ) out = path;
+    else out = NodePath.join( path, opts.fn );
+
+    // return
+    debug(ld.fx,'→',out);
+    return out;
+  }
+  
 }
 
 module.exports = Util;
