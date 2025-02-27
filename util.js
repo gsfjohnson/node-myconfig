@@ -21,7 +21,12 @@ class Util
 
   static isPureObject(val)
   {
-    return Util.isObject(val) && val.constructor.name === 'Object';
+    return Util.isObject(val) && val.constructor && val.constructor.name === 'Object';
+  }
+
+  static isNullObject(val)
+  {
+    return typeof val === 'object' && Object.getPrototypeOf(val) === null;
   }
 
   static isDate(val)
@@ -59,6 +64,16 @@ class Util
   {
     if ( typeof str != 'string' ) return false;
     return true;
+  }
+
+  static isMap(value) {
+    if (typeof value != 'object') return false;
+    return value instanceof Map;
+    //typeof value.clear === 'function' &&
+    //typeof value.delete === 'function' &&
+    //typeof value.get === 'function' &&
+    //typeof value.has === 'function' &&
+    //typeof value.set === 'function';
   }
 
   static isKey(key,allowed)
@@ -126,6 +141,47 @@ class Util
     // return undefined
   }
 
+  /**
+   * Converts a JavaScript object into a Map
+   * @param {Object} obj - The object to convert
+   * @returns {Map} - The resulting Map containing all key-value pairs from the object
+   */
+  static objectToMap(obj)
+  {
+    if (!Util.isObject(obj) || obj === null) throw new TypeError('Input must be an object');
+    
+    const map = new Map();
+    
+    Object.entries(obj).forEach(([key, value]) =>
+    {
+      if (Util.isPureObject(value))
+        value = Util.objectToMap(value);
+      map.set(key, value);
+    });
+    
+    return map;
+  }
+
+  /**
+   * Converts a Map into a JavaScript object
+   * @param {Map} map - The Map to convert
+   * @returns {Object} - The resulting object containing all key-value pairs from the Map
+   */
+  static mapToObject(map)
+  {
+    if (!Util.isMap(map)) throw new TypeError('invalid parameter: must be a Map');
+    
+    const obj = {};
+    
+    map.forEach((value, key) => {
+      // Skip non-string/non-symbol keys as they can't be used as object properties
+      if (typeof key === 'string' || typeof key === 'symbol') {
+        obj[key] = value;
+      }
+    });
+    
+    return obj;
+  }
   static typeof(val)
   {
     //if ( val === undefined ) return 'undefined';

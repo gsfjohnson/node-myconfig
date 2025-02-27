@@ -118,6 +118,30 @@ describe('MyConfig', function()
       // success
     });
 
+    it('cfg.query( .whatever ) --> value', function() {
+      const result = cfg.query('.whatever');
+
+      const expected = 'value';
+      const actual = result;
+      Assert.equal(actual, expected);
+    });
+
+    it('cfg.delete("whatever") --> true', function() {
+      const result = cfg.delete('whatever');
+
+      const expected = true;
+      const actual = result;
+      Assert.equal(actual, expected);
+    });
+
+    it('cfg.get("whatever") after delete --> undefined', function() {
+      const result = cfg.get('whatever');
+
+      const expected = undefined;
+      const actual = result;
+      Assert.equal(actual, expected);
+    });
+
   });
 
 });

@@ -10,7 +10,7 @@ async function main()
 
   console.log('*** cfg = await MyConfig.loadFromFile(tmp_fn) ...');
   let cfg = await MyConfig.loadFromFile(tmp_fn);
-  console.log('*** cfg:', cfg );
+  console.log('*** cfg.raw:', cfg.raw );
 
   console.log('*** cfg.get(whatever):', cfg.get('whatever') );
 }

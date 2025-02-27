@@ -3,6 +3,8 @@ const NodePath = require('node:path');
 const NodeUtil = require('node:util');
 const NodeFsPromise = require('node:fs/promises');
 
+const JsonQuery = require('json-query');
+
 const Util = require('./util');
 const Ini = require('./ini');
 const Json = require('./json');
@@ -17,73 +19,238 @@ class MyConfig
   static app_name = 'MyConfig';
   #sd;
 
-  constructor(opts)
+  constructor(...options)
   {
     const ld = { cl: 'MyConfig', fx: '.constructor()' };
-    debug(ld.fx,'←',opts);
+    debug(ld.fx,'←',...options);
 
     // initial
-    const id = this.id = 'mycfg_'+Util.rand_string(2);
+    const opts = Object.create(null);
+    this.id = 'mycfg_'+Util.rand_string(2);
+    this.data = new Map();
     const sd = this.#sd = {
-      cfg: {},
       dirty: [],
       constructing: true,
     };
 
-    // sanity: opts
-    if ( ! Util.isPureObject(opts) ) opts = {};
-    if ( Util.isPureObject(opts.cfg) ) sd.cfg = opts.cfg;
+    // process options
+    if (!Array.isArray(options)) options = [];
+    while (options.length)
+    {
+      let opt = options.shift();
+      switch (Util.typeof(opt))
+      {
+        case 'map': opts.data = opt; break;
+        case 'string': opts.name = opt; break;
+      }
+    }
+
+    // sanity
+    if (!Util.isString(opts.name))
+      throw new Error('invalid name: must be string');
+    if ( Util.isMap(opts.data) )
+      this.data = new Map( JSON.parse(JSON.stringify([...opts.data])) ); // deep clone
 
     // process updated after construction phase
     delete sd.constructing;
+    Object.freeze(this);
 
     // complete
     debug(ld.fx,'→',this);
   }
 
-  set(key,value)
+  set(key,val)
   {
     const ld = { cl: this, fx: '.set()' };
-    const sd = this.#sd;
-    debug(ld.fx,key,'←',value);
-    if ( value === undefined )
-      delete this.raw[key];
-    else this.raw[key] = value;
-    // set dirty
-    if ( ! sd.constructing ) {
-      MyConfig.setDirty(sd.dirty,key);
-      //this.updated = new Date();
+    debug(ld.fx,'←',key,val);
+
+    // initial
+    let data = this.data;
+    let v, out;
+
+    // sanity
+    if ( typeof key != 'string' ) throw new Error('invalid key: must be string');
+    if (!Util.isMap(data)) data = this.data = new Map();
+
+    // split key
+    const keys = [];
+    if ( key.indexOf('.') == -1 ) keys[0] = key;
+    else keys.splice( 0, 0, ...key.split('.') );
+
+    while ( keys.length > 1 )
+    {
+      const k = keys.shift();
+      debug(ld.fx,`selecting: ${k}`);
+
+      // create object if...
+      v = data.get(k);
+      if ( keys.length > 0 && !Util.isMap(v) )
+      {
+        debug(ld.fx,'new key:',k);
+        v = new Map();
+        data.set(k,v);
+        data = v;
+        continue;
+      }
+
+      // continue diving...
+      if ( v instanceof Map ) data = v;
     }
-    return true;
+
+    // update
+    const k = keys.shift();
+    debug(ld.fx,`selecting: ${k}`);
+    debug(ld.fx,`setting: ${key} ← ${val}`);
+    data.set(k,val);
+    this.dirty = true;
+    out = true; // success
+
+    // return
+    debug(ld.fx,'→',out);
+    return out;
   }
 
   get(key)
   {
     const ld = { cl: this, fx: '.get()' };
-    const value = this.raw[key];
-    debug(ld.fx,key,'→',value);
-    return value;
+    debug(ld.fx,key);
+
+    // initial
+    let out;
+    let data = this.data;
+
+    // sanity
+    if (!Util.isString(key)) throw new Error(`invalid parameter: key must be string`);
+    if (!Util.isMap(data)) throw new Error(`internal error: data must be Map`);
+
+    // split keys
+    let keys = [];
+    if ( key.indexOf('.') < 0 ) keys.push(val);
+    else keys = key.split('.');
+
+    // operation
+    while ( keys.length )
+    {
+      let k = keys.shift();
+      debug(ld.fx,'selecting:',k);
+      data = data.get(k);
+      if (!Util.isMap(data)) break;
+    }
+    //debug(ld.fx,'data:',data);
+
+    // always clone objects
+    if (Util.isMap(data))
+      data = new Map( JSON.parse(JSON.stringify([...data])) ); // deep clone
+
+    debug(ld.fx,key,'→',out);
+    return out;
+  }
+
+  delete(key)
+  {
+    const ld = { cl: this, fx: '.delete()' };
+    debug(ld.fx,'←',key);
+
+    // initial
+    let success;
+    let data = this.data;
+
+    // sanity
+    if (!Util.isString(key)) throw new Error(`invalid key: must be string`);
+    //if ( k.indexOf('.') == -1 )
+    //  throw new Error('refusing to delete root key:',k);
+
+    // split keys
+    let keys = key.split('.');
+    if ( keys[0] === '' ) keys.shift();
+
+    // dive
+    while ( keys.length > 1 )
+    {
+      const k = keys.shift();
+      debug(ld.fx,`selecting: ${k}`);
+
+      data = data.get(k);
+
+      // continue diving
+      if (!Util.isMap(data)) break;
+    }
+
+    // when keys remain, diving was unsuccessful
+    if ( keys.length > 1 )
+    {
+      debug(ld.fx,'key not found:',keys.join('.'));
+      success = false;
+    }
+    else if ( keys.length === 1 )
+    {
+      const k = keys.shift();
+      debug(ld.fx,`deleting: ${k}`);
+      success = data.delete(k);
+    }
+
+    // return
+    const out = success ? true : false;
+    debug(ld.fx,k,'→',out);
+    return out;
+  }
+
+  /*query(q)
+  {
+    const ld = { cl: this, fx: '.query()' };
+    debug(ld.fx,'←',q);
+
+    // initial
+    const data = this.#sd.cfg;
+    let out;
+
+    // sanity
+    if (!Util.isString(q)) throw new Error(`invalid query: ${q}`);
+    if (!Util.isPureObject(data)) throw new Error(`invalid cfg: ${data}`);
+
+    // query
+    const op = 'JsonQuery()';
+    debug(ld.fx,op,'←',q,data);
+    const result = JsonQuery(q, { ...data });
+    //debug(ld.fx,op,'result:', result);
+    debug(ld.fx,op,'→',result);
+
+    if ( Util.isObject(result) && ('value' in result) && result.value !== null )
+      out = result.value;
+
+    // not found or other failure
+    debug(ld.fx,'→',out);
+    return out;
+  }*/
+
+  async doesConfigPathExist(appname)
+  {
+
   }
 
   async saveToFile(fn)
   {
     const ld = { cl: 'MyConfig', fx: '.saveToFile()' };
     debug(ld.fx,'←',fn);
-    const sd = this.#sd;
-    let length = Object.keys(sd.cfg).length;
+
+    // initial
+    let data = this.data;
+
+    // sanity
     if ( ! fn ) {
-      fn = MyConfig.os_local_path({ mkdir: 1, fn: 'app.json' });
+      fn = Util.os_local_path({ mkdir: 1, fn: 'app.json' });
       debug(ld.fx,'fn:',fn);
     }
     let str, ext = NodePath.extname(fn);
+
     if ( ext != '.ini' && ext != '.json' )
       throw new Error(`only ini/json supported: ${ext}`);
     // encode
-    if (length==0) str = '';
-    else if (ext=='.ini') str = Ini.encode(sd.cfg);
-    else if (ext=='.json') str = Json.encode(sd.cfg);
+    if (data.size==0) str = '';
+    else if (ext=='.ini') str = Ini.encode(data);
+    else if (ext=='.json') str = Json.encode(data);
     // write
-    await NodeFsPromise.writeFile( fn, str );
+    await NodeFsPromise.writeFile( fn, str, { encoding: 'utf8' } );
     // success
     this.dirty = null;
     const out = true;
@@ -106,7 +273,7 @@ class MyConfig
       ext = NodePath.extname(fn);
       if ( ext != '.ini' && ext != '.json' )
         throw new Error(`invalid ext, only ini/json supported: ${ext}`)
-      buff = await NodeFsPromise.readFile(fn);
+      buff = await NodeFsPromise.readFile( fn, { encoding: 'utf8' } );
     }
     catch (e) {
       debug(ld.fx,'caught:',e);
@@ -118,7 +285,7 @@ class MyConfig
     let obj;
     if ( ext == '.ini' ) obj = Ini.decode(buff);
     else if ( ext == '.json' ) obj = Json.decode(buff);
-    if (!Util.isPureObject(obj)) throw new Error(`failed to parse ${fn}`);
+    if (!Util.isMap(obj)) throw new Error(`failed to parse ${fn}`);
 
     // instanciate
     const cfg = new MyConfig({ cfg: obj });
@@ -126,11 +293,6 @@ class MyConfig
     // success
     debug(ld.fx,'→',cfg);
     return cfg;
-  }
-
-  get raw()
-  {
-    return this.#sd.cfg;
   }
 
   set dirty(val)
@@ -161,14 +323,14 @@ class MyConfig
     arr.push(key);
   }
 
-  [NodeUtil.inspect.custom](depth, options)
+  /*[NodeUtil.inspect.custom](depth, options)
   {
     const classname = this.constructor.name;
     const desc = [classname];
     if ( this.id ) desc.push( this.id.split('_')[1] );
     let out = options.stylize('['+desc.join(' ')+']','special');
     return out;
-  }
+  }*/
 }
 
 module.exports = MyConfig;
