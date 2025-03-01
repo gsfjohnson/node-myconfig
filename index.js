@@ -42,6 +42,7 @@ class MyConfig
       {
         case 'map': opts.data = opt; break;
         case 'string': opts.name = opt; break;
+        case 'object': Object.assign(opts,opt); break;
       }
     }
 
@@ -247,8 +248,8 @@ class MyConfig
       throw new Error(`only ini/json supported: ${ext}`);
     // encode
     if (data.size==0) str = '';
-    else if (ext=='.ini') str = Ini.encode(data);
-    else if (ext=='.json') str = Json.encode(data);
+    else if (ext=='.ini') str = Ini.encode( Util.mapToObject(data) );
+    else if (ext=='.json') str = Json.encode( Util.mapToObject(data) );
     // write
     await NodeFsPromise.writeFile( fn, str, { encoding: 'utf8' } );
     // success
@@ -258,10 +259,10 @@ class MyConfig
     return out;
   }
 
-  static async loadFromFile(fn,ignore_not_found=true)
+  static async loadFromFile(fn,opts={})
   {
     const ld = { cl: 'MyConfig', fx: '.loadFromFile()' };
-    debug(ld.fx,'←',fn);
+    debug(ld.fx,'←',fn,opts);
 
     // catch thrown errors
     let ext, buff;
@@ -277,7 +278,7 @@ class MyConfig
     }
     catch (e) {
       debug(ld.fx,'caught:',e);
-      if ( ignore_not_found && e.code == 'ENOENT' ) {} // ignore
+      if ( opts.ignore_not_found && e.code == 'ENOENT' ) {} // ignore
       else throw e;
     }
 
@@ -288,7 +289,7 @@ class MyConfig
     if (!Util.isMap(obj)) throw new Error(`failed to parse ${fn}`);
 
     // instanciate
-    const cfg = new MyConfig({ cfg: obj });
+    const cfg = new MyConfig({ ...opts, data: obj });
 
     // success
     debug(ld.fx,'→',cfg);

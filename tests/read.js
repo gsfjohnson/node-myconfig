@@ -1,18 +1,32 @@
 
 const NodeOs = require('node:os');
 const NodePath = require('node:path');
+
 const MyConfig = require('../index');
+const Util = require('../util');
 
 async function main()
 {
-  let tmp_fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
-  console.log('*** tmp_fn:',tmp_fn);
+  let key, fn;
+  let cl = Util.parse_argv();
 
-  console.log('*** cfg = await MyConfig.loadFromFile(tmp_fn) ...');
-  let cfg = await MyConfig.loadFromFile(tmp_fn);
-  console.log('*** cfg.raw:', cfg.raw );
+  // argv: key
+  if ( cl.argv.length > 0 ) {
+    key = cl.argv[0];
+    console.log('Key:',key);
+  }
 
-  console.log('*** cfg.get(whatever):', cfg.get('whatever') );
+  // argv: filename
+  if ( cl.argv.length > 2 ) fn = cl.argv[2];
+  else fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
+  console.log('*** fn:',fn);
+
+  console.log('*** cfg = await MyConfig.loadFromFile(fn) ...');
+  let cfg = await MyConfig.loadFromFile(fn, { name: 'testapp' });
+
+  if (key) console.log('*** cfg.get(',key,')', cfg.get(key) );
+  else console.log('*** cfg.data:', cfg.data );
+
 }
 
 main();

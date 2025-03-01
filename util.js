@@ -148,6 +148,8 @@ class Util
    */
   static objectToMap(obj)
   {
+    const fx = '.objectToMap()';
+
     if (!Util.isObject(obj) || obj === null) throw new TypeError('Input must be an object');
     
     const map = new Map();
@@ -159,6 +161,7 @@ class Util
       map.set(key, value);
     });
     
+    debug(fx,'=>',map);
     return map;
   }
 
@@ -169,29 +172,47 @@ class Util
    */
   static mapToObject(map)
   {
+    const fx = '.mapToObject()';
+
     if (!Util.isMap(map)) throw new TypeError('invalid parameter: must be a Map');
     
     const obj = {};
     
-    map.forEach((value, key) => {
-      // Skip non-string/non-symbol keys as they can't be used as object properties
-      if (typeof key === 'string' || typeof key === 'symbol') {
-        obj[key] = value;
-      }
+    map.forEach( (value, key) => {
+      switch ( Util.typeof(value) ) {
+        case 'string':
+        case 'symbol':
+          obj[key] = value;
+          break;
+        case 'map':
+          obj[key] = Util.mapToObject(value); break;
+        default:
+          // Skip non-string/non-symbol keys as they can't be used as object properties
+          break;
+    }
+      //if (typeof key === 'string' || typeof key === 'symbol') {
+      //  obj[key] = value;
+      //}
     });
     
+    debug(fx,'=>',obj);
     return obj;
   }
   static typeof(val)
   {
+    const fx = '.typeof()';
+
+    let out = typeof val;
     //if ( val === undefined ) return 'undefined';
-    if ( val === null ) return 'null';
+    if ( val === null ) out = 'null';
     else if ( typeof val == 'object' ) {
-      if ( Array.isArray(val) ) return 'array';
-      return 'object';
+      if ( Buffer.isBuffer(val) ) out = 'buffer';
+      else if ( val instanceof Map ) out = 'map';
+      else if ( Array.isArray(val) ) out = 'array';
+      else out = 'object';
     }
-    // otherwise trust typeof
-    return typeof val;
+    debug(fx,'=>',out);
+    return out;
   }
 
   // inspired by npm:isstream
@@ -343,6 +364,23 @@ class Util
     return out;
   }
   
+  static parse_argv()
+  {
+    const ld = { fx: '.parse_argv()' };
+
+    const av = process.argv.slice();
+    let out = {};
+
+    if ( ['node','node.exe'].includes( NodePath.basename(av[0]) ) )
+      av.shift();
+
+    out.script = av.shift();
+    out.name = NodePath.basename(out.script);
+    out.argv = av;
+
+    debug(ld.fx,'→',out);
+    return out;
+  }
 }
 
 module.exports = Util;

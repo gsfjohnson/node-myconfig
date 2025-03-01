@@ -132,8 +132,8 @@ class Ini
     const separator = opt.whitespace ? ' = ' : '='
     const children = []
   
-    const keys = Array.from(obj, ([key, value]) => (key));
-    //const keys = opt.sort ? Object.keys(obj).sort() : Object.keys(obj)
+    //const keys = Array.from(obj, ([key, value]) => (key));
+    const keys = opt.sort ? Object.keys(obj).sort() : Object.keys(obj)
   
     let padToChars = 0
     // If aligning on the separator, then padToChars is determined as follows:
@@ -178,7 +178,7 @@ class Ini
     for (const k of children) {
       const nk = splitSections(k, '.').join('\\.')
       const section = (opt.section ? opt.section + '.' : '') + nk
-      const child = encode(obj[k], {
+      const child = Ini.encode(obj[k], {
         ...opt,
         section,
       })
