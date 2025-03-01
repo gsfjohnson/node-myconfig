@@ -11,7 +11,6 @@ async function main()
   console.log('*** cfg = new MyConfig()');
   let key, value, fn;
   let cl = Util.parse_argv();
-  let cfg = new MyConfig('testapp');
 
   // argv: key
   if ( cl.argv.length > 0 ) key = cl.argv[0];
@@ -23,14 +22,22 @@ async function main()
   else value = 23;
   console.log('Value:',value);
 
-  // set key=value
-  console.log('*** cfg.set() <--',key,value);
-  cfg.set(key,value);
-
   // argv: filename
   if ( cl.argv.length > 2 ) fn = cl.argv[2];
   else fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
   console.log('*** fn:',fn);
+
+  // load
+  console.log('*** cfg = await MyConfig.loadFromFile(fn) ...');
+  let cfg = await MyConfig.loadFromFile(fn, { name: 'testapp', ignore_not_found: true });
+
+  // display key=value
+  if (key) console.log('*** cfg.get(',key,')', cfg.get(key) );
+  else console.log('*** cfg.data:', cfg.data );
+
+  // set key=value
+  console.log('*** cfg.set() <--',key,value);
+  cfg.set(key,value);
 
   console.log(`*** await cfg.saveToFile(fn) ...`);
   let result = await cfg.saveToFile(fn);

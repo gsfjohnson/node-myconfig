@@ -126,7 +126,7 @@ class MyConfig
 
     // split keys
     let keys = [];
-    if ( key.indexOf('.') < 0 ) keys.push(val);
+    if ( key.indexOf('.') == -1 ) keys.push(key);
     else keys = key.split('.');
 
     // operation
@@ -192,7 +192,7 @@ class MyConfig
 
     // return
     const out = success ? true : false;
-    debug(ld.fx,k,'→',out);
+    debug(ld.fx,key,'→',out);
     return out;
   }
 
