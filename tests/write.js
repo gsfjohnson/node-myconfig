@@ -8,7 +8,6 @@ const Util = require('../util');
 
 async function main()
 {
-  console.log('*** cfg = new MyConfig()');
   let key, value, fn;
   let cl = Util.parse_argv();
 

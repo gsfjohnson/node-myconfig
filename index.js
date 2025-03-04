@@ -1,6 +1,7 @@
 
 const NodePath = require('node:path');
-const NodeUtil = require('node:util');
+//const NodeUtil = require('node:util');
+const NodeFs = require('node:fs');
 const NodeFsPromise = require('node:fs/promises');
 
 const JsonQuery = require('json-query');
@@ -16,7 +17,8 @@ catch (e) { debug = function(){}; } // empty stub
 class MyConfig
 {
   static pd = true; // property debug
-  static app_name = 'MyConfig';
+  //static app_name = 'myconfig';
+  static config_fn = 'config.ini';
   #sd;
 
   constructor(...options)
@@ -49,8 +51,18 @@ class MyConfig
     // sanity
     if (!Util.isString(opts.name))
       throw new Error('invalid name: must be string');
-    if ( Util.isMap(opts.data) )
-      this.data = new Map( JSON.parse(JSON.stringify([...opts.data])) ); // deep clone
+    else this.name = opts.name;
+    if ( Util.isMap(opts.data) ) {
+      //debug(ld.fx,'opts.data:',opts.data);
+      //debug(ld.fx,'opts.data.size:',opts.data.size);
+      //debug(ld.fx,'opts.data.get(whatever):',opts.data.has('whatever'));
+      //let data = Array.from(opts.data);
+      //debug(ld.fx,'data:',data);
+      //let clone = JSON.parse(JSON.stringify(data));
+      let clone = Util.deepCloneMap(opts.data);
+      debug(ld.fx,'cloned:',clone);
+      this.data = clone; // deep clone
+    }
 
     // process updated after construction phase
     delete sd.constructing;
@@ -237,21 +249,62 @@ class MyConfig
     // initial
     let data = this.data;
 
-    // sanity
+    // sanity: fn
     if ( ! fn ) {
-      fn = Util.os_local_path({ mkdir: 1, fn: 'app.json' });
+      let name = this.name, mkdir = 1, fn = MyConfig.config_fn;
+      fn = Util.os_local_path({ name, mkdir, fn });
       debug(ld.fx,'fn:',fn);
     }
-    let str, ext = NodePath.extname(fn);
 
+    // sanity: ext
+    let str, ext = NodePath.extname(fn);
     if ( ext != '.ini' && ext != '.json' )
       throw new Error(`only ini/json supported: ${ext}`);
+
     // encode
     if (data.size==0) str = '';
-    else if (ext=='.ini') str = Ini.encode( Util.mapToObject(data) );
+    else if (ext=='.ini') str = Ini.encode( data );
     else if (ext=='.json') str = Json.encode( Util.mapToObject(data) );
+
     // write
     await NodeFsPromise.writeFile( fn, str, { encoding: 'utf8' } );
+
+    // success
+    this.dirty = null;
+    const out = true;
+    debug(ld.fx,'→',out);
+    return out;
+  }
+
+  savesync(fn)
+  {
+    const ld = { cl: 'MyConfig', fx: '.savesync()' };
+    debug(ld.fx,'←',fn);
+
+    // initial
+    let data = this.data;
+
+    // sanity: fn
+    if ( ! fn ) {
+      let params = { name: this.name, mkdir: 1, fn: MyConfig.config_fn };
+      fn = Util.os_local_path(params);
+      debug(ld.fx,'fn:',fn);
+    }
+
+    // sanity: ext
+    let ext = NodePath.extname(fn);
+    if ( ext != '.ini' && ext != '.json' )
+      throw new Error(`only ini/json supported: ${ext}`);
+
+    // encode
+    let str;
+    if (data.size==0) str = '';
+    else if (ext=='.ini') str = Ini.encode( data );
+    else if (ext=='.json') str = Json.encode( Util.mapToObject(data) );
+
+    // write
+    NodeFs.writeFileSync(fn, str, { encoding: 'utf8' });
+
     // success
     this.dirty = null;
     const out = true;
@@ -267,13 +320,18 @@ class MyConfig
     // catch thrown errors
     let ext, buff;
     try {
+      // sanity: fn
       if ( ! fn ) {
-        fn = Util.os_local_path({ mkdir: 1, fn: 'app.json' });
+        let name = this.name, mkdir = 1, fn = MyConfig.config_fn;
+        fn = Util.os_local_path({ name, mkdir, fn });
         debug(ld.fx,'fn:',fn);
       }
+
+      // sanity: ext
       ext = NodePath.extname(fn);
       if ( ext != '.ini' && ext != '.json' )
         throw new Error(`invalid ext, only ini/json supported: ${ext}`)
+
       buff = await NodeFsPromise.readFile( fn, { encoding: 'utf8' } );
     }
     catch (e) {
@@ -284,12 +342,80 @@ class MyConfig
 
     // deserialize
     let obj;
+    if (!buff) obj = new Map();
     if ( ext == '.ini' ) obj = Ini.decode(buff);
     else if ( ext == '.json' ) obj = Json.decode(buff);
     if (!Util.isMap(obj)) throw new Error(`failed to parse ${fn}`);
 
     // instanciate
-    const cfg = new MyConfig({ ...opts, data: obj });
+    let params = { ...opts };
+    if (obj) params.data = obj;
+    const cfg = new MyConfig(params);
+
+    // success
+    debug(ld.fx,'→',cfg);
+    return cfg;
+  }
+
+  static loadsync(...options)
+  {
+    const ld = { cl: 'MyConfig', fx: '.loadsync()' };
+    debug(ld.fx,'←',...options);
+
+    let fn, opts = {};
+
+    // parse options
+    while (options.length) {
+      let opt = options.shift();
+      if (Util.isString(opt)) {
+        if (['.ini','.json'].includes(NodePath.extname(opt)))
+          fn = opt;
+        else opts.name = opt;
+      }
+      else if (Util.isPureObject(opt)) Object.assign(opts,opt);
+      else throw new Error(`invalid option: ${opt}`);
+    }
+
+    // sanity: name
+    if (!Util.isString(opts.name))
+      throw new Error(`invalid opts.name: ${opts.name}`);
+
+    // catch thrown errors
+    let ext, buff;
+    try {
+      // sanity: fn
+      if ( ! fn ) {
+        let params = { mkdir: 1, fn: MyConfig.config_fn };
+        if (opts.name) params.name = opts.name;
+        fn = Util.os_local_path(params);
+        debug(ld.fx,'fn:',fn);
+      }
+
+      // sanity: ext
+      ext = NodePath.extname(fn);
+      if ( ext != '.ini' && ext != '.json' )
+        throw new Error(`invalid ext, only ini/json supported: ${ext}`)
+
+      buff = NodeFs.readFileSync( fn, { encoding: 'utf8' } );
+      debug(ld.fx,'readFileSync -->',buff);
+    }
+    catch (e) {
+      debug(ld.fx,'caught:',e);
+      if ( opts.ignore_not_found && e.code == 'ENOENT' ) {} // ignore
+      else throw e;
+    }
+
+    // deserialize
+    let obj;
+    if (!buff) obj = new Map();
+    else if ( ext == '.ini' ) obj = Ini.decode(buff);
+    else if ( ext == '.json' ) obj = Json.decode(buff);
+    if (!Util.isMap(obj)) throw new Error(`failed to parse ${fn}`);
+
+    // instanciate
+    let params = { ...opts };
+    if (obj) params.data = obj;
+    const cfg = new MyConfig(params);
 
     // success
     debug(ld.fx,'→',cfg);

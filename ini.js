@@ -112,28 +112,41 @@ function strToType(val)
 class Ini
 {
 
-  static encode(obj, opt = {})
+  static encode(...options)
   {
     const ld = { fx: '.encode()' };
-    debug(ld.fx,'←',obj,opt);
+    debug(ld.fx,'←',...options);
+
+    // parse options
+    let map, obj, opts = {};
+    while (options.length) {
+      let opt = options.shift();
+      if (Util.isMap(opt)) { map = opt; continue }
+      else if (Util.isPureObject(opt)) Object.assign(opts,opt);
+      else throw new Error(`invalid option: ${opt}`);
+    }
+
+    // sanity
+    if (!map) throw new Error(`invalid map: ${map}`);
+    obj = Util.mapToObject(map);
 
     // initial
-    opt.align = opt.align === true;
-    opt.newline = opt.newline === true;
-    opt.sort = opt.sort === true;
-    opt.whitespace = opt.whitespace === true || opt.align === true;
+    opts.align = opts.align === true;
+    opts.newline = opts.newline === true;
+    opts.sort = opts.sort === true;
+    opts.whitespace = opts.whitespace === true || opts.align === true;
     // The `typeof` check is required because accessing the `process` directly fails on browsers.
     /* istanbul ignore next */
-    opt.platform = opt.platform || (typeof process !== 'undefined' && process.platform)
-    opt.bracketedArray = opt.bracketedArray !== false
+    opts.platform = opts.platform || (typeof process !== 'undefined' && process.platform)
+    opts.bracketedArray = opts.bracketedArray !== false
   
     /* istanbul ignore next */
-    const eol = opt.platform === 'win32' ? '\r\n' : '\n'
-    const separator = opt.whitespace ? ' = ' : '='
+    const eol = opts.platform === 'win32' ? '\r\n' : '\n'
+    const separator = opts.whitespace ? ' = ' : '='
     const children = []
   
     //const keys = Array.from(obj, ([key, value]) => (key));
-    const keys = opt.sort ? Object.keys(obj).sort() : Object.keys(obj)
+    const keys = opts.sort ? Object.keys(obj).sort() : Object.keys(obj)
   
     let padToChars = 0
     // If aligning on the separator, then padToChars is determined as follows:
@@ -143,7 +156,7 @@ class Ini
     // 4. Ensure non empty set of keys
     // 5. Reduce the set to the longest `safe` key
     // 6. Get the `safe` length
-    if (opt.align) {
+    if (opts.align) {
       padToChars = safe(
         (
           keys
@@ -156,7 +169,7 @@ class Ini
     }
   
     let out = ''
-    const arraySuffix = opt.bracketedArray ? '[]' : ''
+    const arraySuffix = opts.bracketedArray ? '[]' : ''
   
     for (const k of keys) {
       const val = obj[k]
@@ -171,15 +184,15 @@ class Ini
       }
     }
   
-    if (opt.section && out.length) {
-      out = '[' + safe(opt.section) + ']' + (opt.newline ? eol + eol : eol) + out
+    if (opts.section && out.length) {
+      out = '[' + safe(opts.section) + ']' + (opts.newline ? eol + eol : eol) + out
     }
   
     for (const k of children) {
       const nk = splitSections(k, '.').join('\\.')
-      const section = (opt.section ? opt.section + '.' : '') + nk
-      const child = Ini.encode(obj[k], {
-        ...opt,
+      const section = (opts.section ? opts.section + '.' : '') + nk
+      const child = Ini.encode( Util.objectToMap(obj[k]), {
+        ...opts,
         section,
       })
       if (out.length && child.length) {
@@ -193,13 +206,23 @@ class Ini
     return out
   }
   
-  static decode(str, opt = {})
+  static decode(...options)
   {
     const ld = { fx: '.decode()' };
-    debug(ld.fx,'←',str,opt);
+    debug(ld.fx,'←',...options);
 
+    let str, opts = {}
+
+    // parse options
+    while (options.length) {
+      let opt = options.shift();
+      if (Util.isString(opt)) { str = opt; continue }
+      else if (Util.isPureObject(opt)) Object.assign(opts,opt);
+      else throw new Error(`invalid option: ${opt}`);
+    }
+    
     // initial
-    opt.bracketedArray = opt.bracketedArray !== false
+    opts.bracketedArray = opts.bracketedArray !== false
     const out = new Map();
     let p = out;
     let section = null
@@ -230,7 +253,7 @@ class Ini
       // key = value
       const keyRaw = unsafe(match[2]);
       let isArray;
-      if (opt.bracketedArray) {
+      if (opts.bracketedArray) {
         isArray = keyRaw.length > 2 && keyRaw.slice(-2) === '[]'
       } else {
         duplicates[keyRaw] = (duplicates?.[keyRaw] || 0) + 1
@@ -244,20 +267,14 @@ class Ini
 
       // Convert keys with '[]' suffix to an array
       if (isArray) {
-        if (!hasOwnProperty.call(p, key)) {
-          p[key] = []
-        } else if (!Array.isArray(p[key])) {
-          p[key] = [p[key]]
-        }
+        if ( !p.has(key) ) p.set(key,[]);
+        else if ( !Array.isArray(p.get(key)) ) p.get(key) = [ p.get(key) ];
       }
 
       // safeguard against resetting a previously defined
       // array by accidentally forgetting the brackets
-      if (Array.isArray(p[key])) {
-        p[key].push(value)
-      } else {
-        p[key] = value
-      }
+      if ( Array.isArray(p.get(key)) ) p.get(key).push(value);
+      else p.set(key,value);
     }
 
     debug(ld.fx,'→',out);

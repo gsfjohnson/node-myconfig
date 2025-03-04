@@ -161,7 +161,7 @@ class Util
       map.set(key, value);
     });
     
-    debug(fx,'=>',map);
+    debug(fx,'→',map);
     return map;
   }
 
@@ -173,6 +173,7 @@ class Util
   static mapToObject(map)
   {
     const fx = '.mapToObject()';
+    debug(fx,'←',map);
 
     if (!Util.isMap(map)) throw new TypeError('invalid parameter: must be a Map');
     
@@ -180,6 +181,7 @@ class Util
     
     map.forEach( (value, key) => {
       switch ( Util.typeof(value) ) {
+        case 'number':
         case 'string':
         case 'symbol':
           obj[key] = value;
@@ -195,12 +197,87 @@ class Util
       //}
     });
     
-    debug(fx,'=>',obj);
+    debug(fx,'→',obj);
     return obj;
   }
+
+  static deepCloneMap(originalMap)
+  {
+    const fx = '.deepCloneMap()';
+    debug(fx,'←',originalMap);
+
+    // Create a new Map to hold the cloned key-value pairs
+    const clonedMap = new Map();
+    
+    // Iterate through each key-value pair in the original Map
+    for (const [key, value] of originalMap.entries()) {
+      let clonedValue;
+      
+      if (value === null || value === undefined) clonedValue = value;
+      else if (value instanceof Map) clonedValue = Util.deepCloneMap(value);
+      else if (value instanceof Set) {
+        clonedValue = new Set([...value].map(item => 
+          item instanceof Object ? deepCloneObject(item) : item
+        ));
+      }
+      else if (Array.isArray(value)) {
+        clonedValue = value.map(item => 
+          item instanceof Object ? Util.deepCloneObject(item) : item
+        );
+      }
+      // Handle nested Objects
+      else if (typeof value === 'object') clonedValue = Util.deepCloneObject(value);
+      // Handle primitive values (they are copied by value)
+      else clonedValue = value;
+      
+      // Clone the key if it's an object (to ensure full deep cloning)
+      //const clonedKey = key instanceof Object ? deepCloneObject(key) : key;
+      
+      // Add the cloned key-value pair to the new Map
+      clonedMap.set(key, clonedValue);
+    }
+    
+    debug(fx,'→',clonedMap);
+    return clonedMap;
+  }
+
+  /**
+   * Helper function to deep clone regular objects
+   * 
+   * @param {Object} obj - The object to clone
+   * @returns {Object} A deep clone of the original object
+  **/
+  static deepCloneObject(obj)
+  {
+    const fx = '.deepCloneObject()';
+    debug(fx,'←',obj);
+
+    if (obj === null || typeof obj !== 'object') return obj;
+    
+    // Handle special object types
+    if (obj instanceof Map) return Util.deepCloneMap(obj);
+    if (obj instanceof Set) return new Set([...obj].map(item => Util.deepCloneObject(item)));
+    if (obj instanceof Date) return new Date(obj);
+    if (obj instanceof RegExp) return new RegExp(obj);
+    
+    // Create a new object or array
+    const clone = Array.isArray(obj) ? [] : {};
+    
+    // Recursively copy all properties
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        clone[key] = Util.deepCloneObject(obj[key]);
+      }
+    }
+    
+    debug(fx,'→',clone);
+    return clone;
+  }
+
   static typeof(val)
   {
     const fx = '.typeof()';
+    debug(fx,'←',val);
 
     let out = typeof val;
     //if ( val === undefined ) return 'undefined';
@@ -211,7 +288,7 @@ class Util
       else if ( Array.isArray(val) ) out = 'array';
       else out = 'object';
     }
-    debug(fx,'=>',out);
+    debug(fx,'→',out);
     return out;
   }
 
@@ -247,7 +324,7 @@ class Util
       let _on_data = (chunk) =>
       {
         if ( ! Buffer.isBuffer(chunk) ) {
-          let err = new Error('invalid data type: '+ typeof chunk);
+          let err = new Error('invalid data type: '+ Util.typeof(chunk));
           return stream.destroy(err);
         }
         debug(ld.fx,'saving',chunk);
@@ -255,7 +332,7 @@ class Util
       }
       let _on_close = () => {
         let buffers = Buffer.concat(arrayOfBuffers);
-        debug(ld.fx,'resolve =>',buffers);
+        debug(ld.fx,'resolve →',buffers);
         resolve(buffers);
       };
       stream.on('close',_on_close);
@@ -317,7 +394,7 @@ class Util
     dir = dir.join(S3_Sep);
 
     // success
-    debug(ld,'=>',dir);
+    debug(ld,'→',dir);
     return dir;
   }
 
@@ -327,23 +404,26 @@ class Util
     debug(ld.fx,'←',opts);
 
     // initial
-    let out;
+    let out, name;
     let os_platform = NodeOs.platform();
     let os_homedir = NodeOs.homedir();
 
     // sanity: opts
-    if ( ! Util.isPureObject(opts) ) opts = {};
+    if (Util.isString(opts)) opts = { name: opts };
+    if (!Util.isPureObject(opts)) opts = {};
+    if (!Util.isString(opts.name))
+      throw new Error(`invalid opts.name: ${opts.name}`);
 
     // operation
     let path;
     switch (os_platform)
     {
       case 'win32':
-        path = NodePath.join(os_homedir,'AppData','Local',Config.app_name);
+        path = NodePath.join(os_homedir,'AppData','Local',opts.name);
         break;
       case 'darwin':
       case 'linux':
-        path = NodePath.join(os_homedir,'.config',Config.app_name);
+        path = NodePath.join(os_homedir,'.config',opts.name);
         break;
       default:
         throw new Error('unsupported platform: '+ os_platform);
