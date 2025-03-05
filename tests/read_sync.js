@@ -16,11 +16,10 @@ console.log('Key:',key);
 
 // argv: filename
 if ( cl.argv.length > 2 ) fn = cl.argv[2];
-else fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
 console.log('*** fn:',fn);
 
-console.log('*** cfg = MyConfig.loadsync(fn) ...');
-let cfg = MyConfig.loadsync(fn, { name: 'testapp' });
+console.log('*** cfg = MyConfig.loadsync({ name: testapp, ignore_not_found: true }) ...');
+let cfg = MyConfig.loadsync({ name: 'testapp', ignore_not_found: true });
 
 if (key) console.log('*** cfg.get(',key,')', cfg.get(key) );
 else console.log('*** cfg.data:', cfg.data );

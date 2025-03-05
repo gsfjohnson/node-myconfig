@@ -115,7 +115,7 @@ class MyConfig
     debug(ld.fx,`selecting: ${k}`);
     debug(ld.fx,`setting: ${key} ← ${val}`);
     data.set(k,val);
-    this.dirty = true;
+    this.dirty = key;
     out = true; // success
 
     // return
@@ -151,9 +151,9 @@ class MyConfig
     }
     //debug(ld.fx,'data:',data);
 
-    // always clone objects
-    if (Util.isMap(data))
-      data = new Map( JSON.parse(JSON.stringify([...data])) ); // deep clone
+    // always deep clone
+    if (Util.isMap(data)) data = Util.deepCloneMap(data);
+    out = data;
 
     debug(ld.fx,key,'→',out);
     return out;
@@ -241,7 +241,7 @@ class MyConfig
 
   }
 
-  async saveToFile(fn)
+  async save(fn)
   {
     const ld = { cl: 'MyConfig', fx: '.saveToFile()' };
     debug(ld.fx,'←',fn);
@@ -251,8 +251,9 @@ class MyConfig
 
     // sanity: fn
     if ( ! fn ) {
-      let name = this.name, mkdir = 1, fn = MyConfig.config_fn;
-      fn = Util.os_local_path({ name, mkdir, fn });
+      let params = { mkdir: 1, fn: MyConfig.config_fn };
+      if (this.name) params.name = this.name;
+      fn = Util.os_local_path(params);
       debug(ld.fx,'fn:',fn);
     }
 
@@ -286,7 +287,8 @@ class MyConfig
 
     // sanity: fn
     if ( ! fn ) {
-      let params = { name: this.name, mkdir: 1, fn: MyConfig.config_fn };
+      let params = { mkdir: 1, fn: MyConfig.config_fn };
+      if (this.name) params.name = this.name;
       fn = Util.os_local_path(params);
       debug(ld.fx,'fn:',fn);
     }
@@ -312,18 +314,37 @@ class MyConfig
     return out;
   }
 
-  static async loadFromFile(fn,opts={})
+  static async load(...options)
   {
-    const ld = { cl: 'MyConfig', fx: '.loadFromFile()' };
-    debug(ld.fx,'←',fn,opts);
+    const ld = { cl: 'MyConfig', fx: '.load()' };
+    debug(ld.fx,'←',...options);
+
+    let fn, opts = {};
+
+    // parse options
+    while (options.length) {
+      let opt = options.shift();
+      if (Util.isString(opt)) {
+        if (['.ini','.json'].includes(NodePath.extname(opt)))
+          fn = opt;
+        else opts.name = opt;
+      }
+      else if (Util.isPureObject(opt)) Object.assign(opts,opt);
+      else throw new Error(`invalid option: ${opt}`);
+    }
+
+    // sanity: name
+    if (!Util.isString(opts.name))
+      throw new Error(`invalid opts.name: ${opts.name}`);
 
     // catch thrown errors
     let ext, buff;
     try {
       // sanity: fn
       if ( ! fn ) {
-        let name = this.name, mkdir = 1, fn = MyConfig.config_fn;
-        fn = Util.os_local_path({ name, mkdir, fn });
+        let params = { mkdir: 1, fn: MyConfig.config_fn };
+        if (opts.name) params.name = opts.name;
+        fn = Util.os_local_path(params);
         debug(ld.fx,'fn:',fn);
       }
 
@@ -428,8 +449,14 @@ class MyConfig
     const sd = this.#sd;
     if ( ! val ) {
       sd.dirty = [];
-      if ( MyConfig.pd ) debug(ld.fx,'⇐',val);
+      if ( MyConfig.pd ) debug(ld.fx,'←',val);
     }
+    else if ( typeof val == 'string' ) {
+      if ( !Array.isArray(sd.dirty) ) sd.dirty = [];
+      sd.dirty.push(val);
+    }
+    else if ( Array.isArray(val) ) sd.dirty = val;
+    else throw new Error('invalid parameter: '+val);
   }
 
   get dirty()
@@ -437,7 +464,7 @@ class MyConfig
     const ld = { cl: this, fx: '.dirty' };
     const sd = this.#sd;
     let out = sd.dirty.length;
-    if ( MyConfig.pd ) debug(ld.fx,'⇒',out);
+    if ( MyConfig.pd ) debug(ld.fx,'→',out);
     return out;
   }
 

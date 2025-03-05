@@ -181,7 +181,11 @@ class Util
     
     map.forEach( (value, key) => {
       switch ( Util.typeof(value) ) {
+        case 'boolean':
+          obj[key] = value ? 'true' : 'false';
+          break;
         case 'number':
+          obj[key] = ''+value;
         case 'string':
         case 'symbol':
           obj[key] = value;

@@ -23,6 +23,7 @@
     "debug": "^4.4.0"
   },
   "devDependencies": {
+    "chai": "^5.2.0",
     "minimist": "^1.2.8"
   },
   "dependencies": {

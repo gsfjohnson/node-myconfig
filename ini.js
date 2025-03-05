@@ -1,4 +1,3 @@
-
 const Util = require('./util');
 
 let debug; try { debug = require('debug')('myconfig:ini'); }
@@ -189,8 +188,8 @@ class Ini
     }
   
     for (const k of children) {
-      const nk = splitSections(k, '.').join('\\.')
-      const section = (opts.section ? opts.section + '.' : '') + nk
+      const nk = splitSections(k, ' ').join(' ')
+      const section = (opts.section ? opts.section + ' ' : '') + nk
       const child = Ini.encode( Util.objectToMap(obj[k]), {
         ...opts,
         section,
@@ -245,8 +244,29 @@ class Ini
       if (match[1] !== undefined) {
         section = unsafe(match[1]);
         debug(ld.fx,'found section:',section);
-        p = out.get(section);
-        if (!p) { p = new Map(); out.set(section,p); }
+
+        let sectionParts = section.split(' ');
+        let currentSection = out;
+
+        for (let i = 0; i < sectionParts.length; i++) {
+          const part = sectionParts[i];
+          if (!part) continue; // Skip empty parts
+
+          if (i === sectionParts.length - 1) {
+            // Last part - set up the final section
+            p = currentSection.get(part);
+            if (!p) {
+              p = new Map();
+              currentSection.set(part, p);
+            }
+          } else {
+            // Navigate through nested sections
+            if (!currentSection.has(part)) {
+              currentSection.set(part, new Map());
+            }
+            currentSection = currentSection.get(part);
+          }
+        }
         continue;
       }
 
@@ -267,8 +287,11 @@ class Ini
 
       // Convert keys with '[]' suffix to an array
       if (isArray) {
-        if ( !p.has(key) ) p.set(key,[]);
-        else if ( !Array.isArray(p.get(key)) ) p.get(key) = [ p.get(key) ];
+        if (!p.has(key)) p.set(key, []);
+        else if (!Array.isArray(p.get(key))) {
+          const oldValue = p.get(key);
+          p.set(key, [oldValue]);
+        }
       }
 
       // safeguard against resetting a previously defined

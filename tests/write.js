@@ -23,12 +23,11 @@ async function main()
 
   // argv: filename
   if ( cl.argv.length > 2 ) fn = cl.argv[2];
-  else fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
   console.log('*** fn:',fn);
 
   // load
-  console.log('*** cfg = await MyConfig.loadFromFile(fn) ...');
-  let cfg = await MyConfig.loadFromFile(fn, { name: 'testapp', ignore_not_found: true });
+  console.log('*** cfg = await MyConfig.load({ name: testapp, ignore_not_found: true }) ...');
+  let cfg = await MyConfig.load({ name: 'testapp', ignore_not_found: true });
 
   // display key=value
   if (key) console.log('*** cfg.get(',key,')', cfg.get(key) );
@@ -38,8 +37,8 @@ async function main()
   console.log('*** cfg.set() <--',key,value);
   cfg.set(key,value);
 
-  console.log(`*** await cfg.saveToFile(fn) ...`);
-  let result = await cfg.saveToFile(fn);
+  console.log(`*** await cfg.save(fn) ...`);
+  let result = await cfg.save(fn);
   console.log('result:',result);
 
 }

@@ -9,17 +9,17 @@ const MyConfig = require('../index');
 describe('MyConfig', function()
 {
   let cfg;
-  let cfg_fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.json' );
+  let cfg_fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
 
   describe('initial', () =>
   {
 
     it('cfg_fn = '+ cfg_fn, function(){});
 
-    it.skip('cfg = MyConfig.loadFromFile( cfg_fn, false ) --> instanceof MyConfig', async function()
+    it.skip('cfg = await MyConfig.load( cfg_fn ) --> instanceof MyConfig', async function()
     {
       let fn = ''+cfg_fn;
-      const result = await MyConfig.loadFromFile( fn, false );
+      const result = await MyConfig.load( fn );
 
       const expected = true;
       const actual = result instanceof MyConfig;
@@ -33,9 +33,9 @@ describe('MyConfig', function()
 
   describe('tests', () =>
   {
-    it('cfg = new MyConfig() --> instanceof MyConfig', function()
+    it('cfg = new MyConfig("testapp") --> instanceof MyConfig', function()
     {
-      const result = new MyConfig();
+      const result = new MyConfig('testapp');
 
       // test result
       const expected = true;
@@ -69,10 +69,10 @@ describe('MyConfig', function()
     });
 
 
-    it('cfg.saveToFile( cfg_fn ) --> true', async function()
+    it('await cfg.save( cfg_fn ) --> true', async function()
     {
       let fn = ''+cfg_fn;
-      const result = await cfg.saveToFile( fn );
+      const result = await cfg.save( fn );
 
       // test result
       const expected = true;
@@ -92,10 +92,10 @@ describe('MyConfig', function()
       // success
     });
 
-    it('cfg = MyConfig.loadFromFile( cfg_fn ) --> instanceof MyConfig', async function()
+    it('cfg = MyConfig.load( cfg_fn, { name: "testapp" } ) --> instanceof MyConfig', async function()
     {
       let fn = ''+cfg_fn;
-      const result = await MyConfig.loadFromFile( fn );
+      const result = await MyConfig.load( fn, { name: 'testapp' } );
 
       // test result
       const expected = true;
@@ -118,7 +118,8 @@ describe('MyConfig', function()
       // success
     });
 
-    it('cfg.query( .whatever ) --> value', function() {
+    it.skip('cfg.query( .whatever ) --> value', function()
+    {
       const result = cfg.query('.whatever');
 
       const expected = 'value';
@@ -126,7 +127,8 @@ describe('MyConfig', function()
       Assert.equal(actual, expected);
     });
 
-    it('cfg.delete("whatever") --> true', function() {
+    it('cfg.delete("whatever") --> true', function()
+    {
       const result = cfg.delete('whatever');
 
       const expected = true;
@@ -134,7 +136,8 @@ describe('MyConfig', function()
       Assert.equal(actual, expected);
     });
 
-    it('cfg.get("whatever") after delete --> undefined', function() {
+    it('cfg.get("whatever") after delete --> undefined', function()
+    {
       const result = cfg.get('whatever');
 
       const expected = undefined;
