@@ -1,11 +1,14 @@
 
 const NodePath = require('node:path');
+//const NodeUtil = require('node:util');
 const NodeFs = require('node:fs');
-const NodeOs = require('node:os');
-const NodeUtil = require('node:util');
-const NodeFilePromise = require('node:fs/promises');
+const NodeFsPromise = require('node:fs/promises');
+
+//const JsonQuery = require('json-query');
 
 const Util = require('./util');
+const Ini = require('./ini');
+const Json = require('./json');
 
 let debug; try { debug = require('debug')('myconfig'); }
 catch (e) { debug = function(){}; } // empty stub
@@ -14,96 +17,259 @@ catch (e) { debug = function(){}; } // empty stub
 class MyConfig
 {
   static pd = true; // property debug
-  static app_name = 'MyConfig';
+  //static app_name = 'myconfig';
+  static config_fn = 'config.ini';
   #sd;
 
-  constructor(opts)
+  constructor(...options)
   {
     const ld = { cl: 'MyConfig', fx: '.constructor()' };
-    debug(ld.fx,'←',opts);
+    debug(ld.fx,'←',...options);
 
     // initial
-    const id = this.id = 'mycfg_'+Util.rand_string(2);
+    const opts = Object.create(null);
+    this.id = 'mycfg_'+Util.rand_string(2);
+    this.data = new Map();
     const sd = this.#sd = {
-      cfg: {},
       dirty: [],
       constructing: true,
     };
 
-    // sanity: opts
-    if ( Buffer.isBuffer(opts) )
-      opts = { cfg: MyConfig.deserialize(opts) };
-    if ( ! Util.isPureObject(opts) ) opts = {};
-    if ( Util.isPureObject(opts.cfg) ) sd.cfg = opts.cfg;
+    // process options
+    if (!Array.isArray(options)) options = [];
+    while (options.length)
+    {
+      let opt = options.shift();
+      switch (Util.typeof(opt))
+      {
+        case 'map': opts.data = opt; break;
+        case 'string': opts.name = opt; break;
+        case 'object': Object.assign(opts,opt); break;
+      }
+    }
+
+    // sanity
+    if (!Util.isString(opts.name))
+      throw new Error('invalid name: must be string');
+    else this.name = opts.name;
+    if ( Util.isMap(opts.data) ) {
+      //debug(ld.fx,'opts.data:',opts.data);
+      //debug(ld.fx,'opts.data.size:',opts.data.size);
+      //debug(ld.fx,'opts.data.get(whatever):',opts.data.has('whatever'));
+      //let data = Array.from(opts.data);
+      //debug(ld.fx,'data:',data);
+      //let clone = JSON.parse(JSON.stringify(data));
+      let clone = Util.deepCloneMap(opts.data);
+      debug(ld.fx,'cloned:',clone);
+      this.data = clone; // deep clone
+    }
 
     // process updated after construction phase
     delete sd.constructing;
+    Object.freeze(this);
 
     // complete
     debug(ld.fx,'→',this);
   }
 
-  set(key,value)
+  set(key,val)
   {
     const ld = { cl: this, fx: '.set()' };
-    const sd = this.#sd;
-    debug(ld.fx,key,'←',value);
-    if ( value === undefined )
-      delete this.raw[key];
-    else this.raw[key] = value;
-    // set dirty
-    if ( ! sd.constructing ) {
-      MyConfig.setDirty(sd.dirty,key);
-      //this.updated = new Date();
+    debug(ld.fx,'←',key,val);
+
+    // initial
+    let data = this.data;
+    let v, out;
+
+    // sanity
+    if ( typeof key != 'string' ) throw new Error('invalid key: must be string');
+    if (!Util.isMap(data)) data = this.data = new Map();
+
+    // split key
+    const keys = [];
+    if ( key.indexOf('.') == -1 ) keys[0] = key;
+    else keys.splice( 0, 0, ...key.split('.') );
+
+    while ( keys.length > 1 )
+    {
+      const k = keys.shift();
+      debug(ld.fx,`selecting: ${k}`);
+
+      // create object if...
+      v = data.get(k);
+      if ( keys.length > 0 && !Util.isMap(v) )
+      {
+        debug(ld.fx,'new key:',k);
+        v = new Map();
+        data.set(k,v);
+        data = v;
+        continue;
+      }
+
+      // continue diving...
+      if ( v instanceof Map ) data = v;
     }
-    return true;
+
+    // update
+    const k = keys.shift();
+    debug(ld.fx,`selecting: ${k}`);
+    debug(ld.fx,`setting: ${key} ← ${val}`);
+    data.set(k,val);
+    this.dirty = key;
+    out = true; // success
+
+    // return
+    debug(ld.fx,'→',out);
+    return out;
   }
 
   get(key)
   {
     const ld = { cl: this, fx: '.get()' };
-    const value = this.raw[key];
-    debug(ld.fx,key,'→',value);
-    return value;
-  }
+    debug(ld.fx,key);
 
-  serialize(cfg)
-  {
-    // XXX: serialize MyConfig for save()
-    let obj = this.raw;
-    if ( ! Util.isPureObject(obj) ) obj = {};
-    let cfgString = JSON.stringify(obj);
-    // success
-    return cfgString;
-  }
+    // initial
+    let out;
+    let data = this.data;
 
-  static deserialize(str)
-  {
-    const ld = { cl: 'MyConfig', fx: '.deserialize()' };
-    debug(ld.fx,'←',str);
+    // sanity
+    if (!Util.isString(key)) throw new Error(`invalid parameter: key must be string`);
+    if (!Util.isMap(data)) throw new Error(`internal error: data must be Map`);
 
-    // reinstanciate MyConfig from load()
-    //const cfg = new MyConfig();
+    // split keys
+    let keys = [];
+    if ( key.indexOf('.') == -1 ) keys.push(key);
+    else keys = key.split('.');
 
-    // XXX: deserialize
-    let out = JSON.parse(str);
-    //console.log('deserialize:',cfg.raw);
+    // operation
+    while ( keys.length )
+    {
+      let k = keys.shift();
+      debug(ld.fx,'selecting:',k);
+      data = data.get(k);
+      if (!Util.isMap(data)) break;
+    }
+    //debug(ld.fx,'data:',data);
 
-    // success
-    debug(ld.fx,'→',out);
+    // always deep clone
+    if (Util.isMap(data)) data = Util.deepCloneMap(data);
+    out = data;
+
+    debug(ld.fx,key,'→',out);
     return out;
   }
 
-  async saveToFile(fn)
+  delete(key)
+  {
+    const ld = { cl: this, fx: '.delete()' };
+    debug(ld.fx,'←',key);
+
+    // initial
+    let success;
+    let data = this.data;
+
+    // sanity
+    if (!Util.isString(key)) throw new Error(`invalid key: must be string`);
+    //if ( k.indexOf('.') == -1 )
+    //  throw new Error('refusing to delete root key:',k);
+
+    // split keys
+    let keys = key.split('.');
+    if ( keys[0] === '' ) keys.shift();
+
+    // dive
+    while ( keys.length > 1 )
+    {
+      const k = keys.shift();
+      debug(ld.fx,`selecting: ${k}`);
+
+      data = data.get(k);
+
+      // continue diving
+      if (!Util.isMap(data)) break;
+    }
+
+    // when keys remain, diving was unsuccessful
+    if ( keys.length > 1 )
+    {
+      debug(ld.fx,'key not found:',keys.join('.'));
+      success = false;
+    }
+    else if ( keys.length === 1 )
+    {
+      const k = keys.shift();
+      debug(ld.fx,`deleting: ${k}`);
+      success = data.delete(k);
+    }
+
+    // return
+    const out = success ? true : false;
+    debug(ld.fx,key,'→',out);
+    return out;
+  }
+
+  /*query(q)
+  {
+    const ld = { cl: this, fx: '.query()' };
+    debug(ld.fx,'←',q);
+
+    // initial
+    const data = this.#sd.cfg;
+    let out;
+
+    // sanity
+    if (!Util.isString(q)) throw new Error(`invalid query: ${q}`);
+    if (!Util.isPureObject(data)) throw new Error(`invalid cfg: ${data}`);
+
+    // query
+    const op = 'JsonQuery()';
+    debug(ld.fx,op,'←',q,data);
+    const result = JsonQuery(q, { ...data });
+    //debug(ld.fx,op,'result:', result);
+    debug(ld.fx,op,'→',result);
+
+    if ( Util.isObject(result) && ('value' in result) && result.value !== null )
+      out = result.value;
+
+    // not found or other failure
+    debug(ld.fx,'→',out);
+    return out;
+  }*/
+
+  async doesConfigPathExist(appname)
+  {
+
+  }
+
+  async save(fn)
   {
     const ld = { cl: 'MyConfig', fx: '.saveToFile()' };
     debug(ld.fx,'←',fn);
-    const sd = this.#sd;
+
+    // initial
+    let data = this.data;
+
+    // sanity: fn
     if ( ! fn ) {
-      fn = MyConfig.os_local_path({ mkdir: 1, fn: 'app.json' });
+      let params = { mkdir: 1, fn: MyConfig.config_fn };
+      if (this.name) params.name = this.name;
+      fn = Util.os_local_path(params);
       debug(ld.fx,'fn:',fn);
     }
-    await NodeFilePromise.writeFile( fn, this.serialize() );
+
+    // sanity: ext
+    let str, ext = NodePath.extname(fn);
+    if ( ext != '.ini' && ext != '.json' )
+      throw new Error(`only ini/json supported: ${ext}`);
+
+    // encode
+    if (data.size==0) str = '';
+    else if (ext=='.ini') str = Ini.encode( data );
+    else if (ext=='.json') str = Json.encode( Util.mapToObject(data) );
+
+    // write
+    await NodeFsPromise.writeFile( fn, str, { encoding: 'utf8' } );
+
     // success
     this.dirty = null;
     const out = true;
@@ -111,37 +277,170 @@ class MyConfig
     return out;
   }
 
-  static async loadFromFile(fn,ignore_not_found=true)
+  savesync(fn)
   {
-    const ld = { cl: 'MyConfig', fx: '.loadFromFile()' };
+    const ld = { cl: 'MyConfig', fx: '.savesync()' };
     debug(ld.fx,'←',fn);
 
+    // initial
+    let data = this.data;
+
+    // sanity: fn
+    if ( ! fn ) {
+      let params = { mkdir: 1, fn: MyConfig.config_fn };
+      if (this.name) params.name = this.name;
+      fn = Util.os_local_path(params);
+      debug(ld.fx,'fn:',fn);
+    }
+
+    // sanity: ext
+    let ext = NodePath.extname(fn);
+    if ( ext != '.ini' && ext != '.json' )
+      throw new Error(`only ini/json supported: ${ext}`);
+
+    // encode
+    let str;
+    if (data.size==0) str = '';
+    else if (ext=='.ini') str = Ini.encode( data );
+    else if (ext=='.json') str = Json.encode( Util.mapToObject(data) );
+
+    // write
+    NodeFs.writeFileSync(fn, str, { encoding: 'utf8' });
+
+    // success
+    this.dirty = null;
+    const out = true;
+    debug(ld.fx,'→',out);
+    return out;
+  }
+
+  static async load(...options)
+  {
+    const ld = { cl: 'MyConfig', fx: '.load()' };
+    debug(ld.fx,'←',...options);
+
+    let fn, opts = {};
+
+    // parse options
+    while (options.length) {
+      let opt = options.shift();
+      if (Util.isString(opt)) {
+        if (['.ini','.json'].includes(NodePath.extname(opt)))
+          fn = opt;
+        else opts.name = opt;
+      }
+      else if (Util.isPureObject(opt)) Object.assign(opts,opt);
+      else throw new Error(`invalid option: ${opt}`);
+    }
+
+    // sanity: name
+    if (!Util.isString(opts.name))
+      throw new Error(`invalid opts.name: ${opts.name}`);
+
     // catch thrown errors
-    let buff;
+    let ext, buff;
     try {
+      // sanity: fn
       if ( ! fn ) {
-        fn = MyConfig.os_local_path({ mkdir: 1, fn: 'app.json' });
+        let params = { mkdir: 1, fn: MyConfig.config_fn };
+        if (opts.name) params.name = opts.name;
+        fn = Util.os_local_path(params);
         debug(ld.fx,'fn:',fn);
       }
-      buff = await NodeFilePromise.readFile(fn);
+
+      // sanity: ext
+      ext = NodePath.extname(fn);
+      if ( ext != '.ini' && ext != '.json' )
+        throw new Error(`invalid ext, only ini/json supported: ${ext}`)
+
+      buff = await NodeFsPromise.readFile( fn, { encoding: 'utf8' } );
     }
     catch (e) {
       debug(ld.fx,'caught:',e);
-      if ( ignore_not_found && e.code == 'ENOENT' ) {} // ignore
+      if ( opts.ignore_not_found && e.code == 'ENOENT' ) {} // ignore
       else throw e;
     }
 
     // deserialize
-    const cfg = new MyConfig(buff);
+    let obj;
+    if (!buff) obj = new Map();
+    if ( ext == '.ini' ) obj = Ini.decode(buff);
+    else if ( ext == '.json' ) obj = Json.decode(buff);
+    if (!Util.isMap(obj)) throw new Error(`failed to parse ${fn}`);
+
+    // instanciate
+    let params = { ...opts };
+    if (obj) params.data = obj;
+    const cfg = new MyConfig(params);
 
     // success
     debug(ld.fx,'→',cfg);
     return cfg;
   }
 
-  get raw()
+  static loadsync(...options)
   {
-    return this.#sd.cfg;
+    const ld = { cl: 'MyConfig', fx: '.loadsync()' };
+    debug(ld.fx,'←',...options);
+
+    let fn, opts = {};
+
+    // parse options
+    while (options.length) {
+      let opt = options.shift();
+      if (Util.isString(opt)) {
+        if (['.ini','.json'].includes(NodePath.extname(opt)))
+          fn = opt;
+        else opts.name = opt;
+      }
+      else if (Util.isPureObject(opt)) Object.assign(opts,opt);
+      else throw new Error(`invalid option: ${opt}`);
+    }
+
+    // sanity: name
+    if (!Util.isString(opts.name))
+      throw new Error(`invalid opts.name: ${opts.name}`);
+
+    // catch thrown errors
+    let ext, buff;
+    try {
+      // sanity: fn
+      if ( ! fn ) {
+        let params = { mkdir: 1, fn: MyConfig.config_fn };
+        if (opts.name) params.name = opts.name;
+        fn = Util.os_local_path(params);
+        debug(ld.fx,'fn:',fn);
+      }
+
+      // sanity: ext
+      ext = NodePath.extname(fn);
+      if ( ext != '.ini' && ext != '.json' )
+        throw new Error(`invalid ext, only ini/json supported: ${ext}`)
+
+      buff = NodeFs.readFileSync( fn, { encoding: 'utf8' } );
+      debug(ld.fx,'readFileSync -->',buff);
+    }
+    catch (e) {
+      debug(ld.fx,'caught:',e);
+      if ( opts.ignore_not_found && e.code == 'ENOENT' ) {} // ignore
+      else throw e;
+    }
+
+    // deserialize
+    let obj;
+    if (!buff) obj = new Map();
+    else if ( ext == '.ini' ) obj = Ini.decode(buff);
+    else if ( ext == '.json' ) obj = Json.decode(buff);
+    if (!Util.isMap(obj)) throw new Error(`failed to parse ${fn}`);
+
+    // instanciate
+    let params = { ...opts };
+    if (obj) params.data = obj;
+    const cfg = new MyConfig(params);
+
+    // success
+    debug(ld.fx,'→',cfg);
+    return cfg;
   }
 
   set dirty(val)
@@ -150,8 +449,14 @@ class MyConfig
     const sd = this.#sd;
     if ( ! val ) {
       sd.dirty = [];
-      if ( MyConfig.pd ) debug(ld.fx,'⇐',val);
+      if ( MyConfig.pd ) debug(ld.fx,'←',val);
     }
+    else if ( typeof val == 'string' ) {
+      if ( !Array.isArray(sd.dirty) ) sd.dirty = [];
+      sd.dirty.push(val);
+    }
+    else if ( Array.isArray(val) ) sd.dirty = val;
+    else throw new Error('invalid parameter: '+val);
   }
 
   get dirty()
@@ -159,7 +464,7 @@ class MyConfig
     const ld = { cl: this, fx: '.dirty' };
     const sd = this.#sd;
     let out = sd.dirty.length;
-    if ( MyConfig.pd ) debug(ld.fx,'⇒',out);
+    if ( MyConfig.pd ) debug(ld.fx,'→',out);
     return out;
   }
 
@@ -172,57 +477,14 @@ class MyConfig
     arr.push(key);
   }
 
-  static os_local_path(opts)
-  {
-    const ld = { cl: 'Cj', fx: '.os_local_path()' };
-    debug(ld.fx,'←',opts);
-
-    // initial
-    let out;
-    let os_platform = NodeOs.platform();
-    let os_homedir = NodeOs.homedir();
-
-    // sanity: opts
-    if ( ! Util.isPureObject(opts) ) opts = {};
-
-    // operation
-    let path;
-    switch (os_platform)
-    {
-      case 'win32':
-        path = NodePath.join(os_homedir,'AppData','Local',Config.app_name);
-        break;
-      case 'darwin':
-      case 'linux':
-        path = NodePath.join(os_homedir,'.config',Config.app_name);
-        break;
-      default:
-        throw new Error('unsupported platform: '+ os_platform);
-    }
-
-    // mkdir
-    if ( opts.mkdir ) {
-      debug(ld.fx,'mkdirSync:',path);
-      NodeFs.mkdirSync(path, { recursive: true });
-    }
-
-    // build final path
-    if ( ! Util.isString(opts.fn) ) out = path;
-    else out = NodePath.join( path, opts.fn );
-
-    // return
-    debug(ld.fx,'→',out);
-    return out;
-  }
-
-  [NodeUtil.inspect.custom](depth, options)
+  /*[NodeUtil.inspect.custom](depth, options)
   {
     const classname = this.constructor.name;
     const desc = [classname];
     if ( this.id ) desc.push( this.id.split('_')[1] );
     let out = options.stylize('['+desc.join(' ')+']','special');
     return out;
-  }
+  }*/
 }
 
 module.exports = MyConfig;

@@ -1,6 +1,10 @@
 
+const NodePath = require('node:path');
+const NodeOs = require('node:os');
 const NodeCrypto = require('node:crypto');
 const NodeStream = require('node:stream');
+const NodeFs = require('node:fs');
+//const NodeFsPromise = require('node:fs/promises');
 
 let debug; try { debug = require('debug')('myconfig:util'); }
 catch (e) { debug = function(){}; } // empty stub
@@ -17,7 +21,12 @@ class Util
 
   static isPureObject(val)
   {
-    return Util.isObject(val) && val.constructor.name === 'Object';
+    return Util.isObject(val) && val.constructor && val.constructor.name === 'Object';
+  }
+
+  static isNullObject(val)
+  {
+    return typeof val === 'object' && Object.getPrototypeOf(val) === null;
   }
 
   static isDate(val)
@@ -55,6 +64,16 @@ class Util
   {
     if ( typeof str != 'string' ) return false;
     return true;
+  }
+
+  static isMap(value) {
+    if (typeof value != 'object') return false;
+    return value instanceof Map;
+    //typeof value.clear === 'function' &&
+    //typeof value.delete === 'function' &&
+    //typeof value.get === 'function' &&
+    //typeof value.has === 'function' &&
+    //typeof value.set === 'function';
   }
 
   static isKey(key,allowed)
@@ -122,16 +141,159 @@ class Util
     // return undefined
   }
 
+  /**
+   * Converts a JavaScript object into a Map
+   * @param {Object} obj - The object to convert
+   * @returns {Map} - The resulting Map containing all key-value pairs from the object
+   */
+  static objectToMap(obj)
+  {
+    const fx = '.objectToMap()';
+
+    if (!Util.isObject(obj) || obj === null) throw new TypeError('Input must be an object');
+    
+    const map = new Map();
+    
+    Object.entries(obj).forEach(([key, value]) =>
+    {
+      if (Util.isPureObject(value))
+        value = Util.objectToMap(value);
+      map.set(key, value);
+    });
+    
+    debug(fx,'→',map);
+    return map;
+  }
+
+  /**
+   * Converts a Map into a JavaScript object
+   * @param {Map} map - The Map to convert
+   * @returns {Object} - The resulting object containing all key-value pairs from the Map
+   */
+  static mapToObject(map)
+  {
+    const fx = '.mapToObject()';
+    debug(fx,'←',map);
+
+    if (!Util.isMap(map)) throw new TypeError('invalid parameter: must be a Map');
+    
+    const obj = {};
+    
+    map.forEach( (value, key) => {
+      switch ( Util.typeof(value) ) {
+        case 'boolean':
+          obj[key] = value ? 'true' : 'false';
+          break;
+        case 'number':
+          obj[key] = ''+value;
+        case 'string':
+        case 'symbol':
+          obj[key] = value;
+          break;
+        case 'map':
+          obj[key] = Util.mapToObject(value); break;
+        default:
+          // Skip non-string/non-symbol keys as they can't be used as object properties
+          break;
+    }
+      //if (typeof key === 'string' || typeof key === 'symbol') {
+      //  obj[key] = value;
+      //}
+    });
+    
+    debug(fx,'→',obj);
+    return obj;
+  }
+
+  static deepCloneMap(originalMap)
+  {
+    const fx = '.deepCloneMap()';
+    debug(fx,'←',originalMap);
+
+    // Create a new Map to hold the cloned key-value pairs
+    const clonedMap = new Map();
+    
+    // Iterate through each key-value pair in the original Map
+    for (const [key, value] of originalMap.entries()) {
+      let clonedValue;
+      
+      if (value === null || value === undefined) clonedValue = value;
+      else if (value instanceof Map) clonedValue = Util.deepCloneMap(value);
+      else if (value instanceof Set) {
+        clonedValue = new Set([...value].map(item => 
+          item instanceof Object ? deepCloneObject(item) : item
+        ));
+      }
+      else if (Array.isArray(value)) {
+        clonedValue = value.map(item => 
+          item instanceof Object ? Util.deepCloneObject(item) : item
+        );
+      }
+      // Handle nested Objects
+      else if (typeof value === 'object') clonedValue = Util.deepCloneObject(value);
+      // Handle primitive values (they are copied by value)
+      else clonedValue = value;
+      
+      // Clone the key if it's an object (to ensure full deep cloning)
+      //const clonedKey = key instanceof Object ? deepCloneObject(key) : key;
+      
+      // Add the cloned key-value pair to the new Map
+      clonedMap.set(key, clonedValue);
+    }
+    
+    debug(fx,'→',clonedMap);
+    return clonedMap;
+  }
+
+  /**
+   * Helper function to deep clone regular objects
+   * 
+   * @param {Object} obj - The object to clone
+   * @returns {Object} A deep clone of the original object
+  **/
+  static deepCloneObject(obj)
+  {
+    const fx = '.deepCloneObject()';
+    debug(fx,'←',obj);
+
+    if (obj === null || typeof obj !== 'object') return obj;
+    
+    // Handle special object types
+    if (obj instanceof Map) return Util.deepCloneMap(obj);
+    if (obj instanceof Set) return new Set([...obj].map(item => Util.deepCloneObject(item)));
+    if (obj instanceof Date) return new Date(obj);
+    if (obj instanceof RegExp) return new RegExp(obj);
+    
+    // Create a new object or array
+    const clone = Array.isArray(obj) ? [] : {};
+    
+    // Recursively copy all properties
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        clone[key] = Util.deepCloneObject(obj[key]);
+      }
+    }
+    
+    debug(fx,'→',clone);
+    return clone;
+  }
+
   static typeof(val)
   {
+    const fx = '.typeof()';
+    debug(fx,'←',val);
+
+    let out = typeof val;
     //if ( val === undefined ) return 'undefined';
-    if ( val === null ) return 'null';
+    if ( val === null ) out = 'null';
     else if ( typeof val == 'object' ) {
-      if ( Array.isArray(val) ) return 'array';
-      return 'object';
+      if ( Buffer.isBuffer(val) ) out = 'buffer';
+      else if ( val instanceof Map ) out = 'map';
+      else if ( Array.isArray(val) ) out = 'array';
+      else out = 'object';
     }
-    // otherwise trust typeof
-    return typeof val;
+    debug(fx,'→',out);
+    return out;
   }
 
   // inspired by npm:isstream
@@ -166,7 +328,7 @@ class Util
       let _on_data = (chunk) =>
       {
         if ( ! Buffer.isBuffer(chunk) ) {
-          let err = new Error('invalid data type: '+ typeof chunk);
+          let err = new Error('invalid data type: '+ Util.typeof(chunk));
           return stream.destroy(err);
         }
         debug(ld.fx,'saving',chunk);
@@ -174,7 +336,7 @@ class Util
       }
       let _on_close = () => {
         let buffers = Buffer.concat(arrayOfBuffers);
-        debug(ld.fx,'resolve =>',buffers);
+        debug(ld.fx,'resolve →',buffers);
         resolve(buffers);
       };
       stream.on('close',_on_close);
@@ -236,10 +398,73 @@ class Util
     dir = dir.join(S3_Sep);
 
     // success
-    debug(ld,'=>',dir);
+    debug(ld,'→',dir);
     return dir;
   }
 
+  static os_local_path(opts)
+  {
+    const ld = { fx: '.os_local_path()' };
+    debug(ld.fx,'←',opts);
+
+    // initial
+    let out, name;
+    let os_platform = NodeOs.platform();
+    let os_homedir = NodeOs.homedir();
+
+    // sanity: opts
+    if (Util.isString(opts)) opts = { name: opts };
+    if (!Util.isPureObject(opts)) opts = {};
+    if (!Util.isString(opts.name))
+      throw new Error(`invalid opts.name: ${opts.name}`);
+
+    // operation
+    let path;
+    switch (os_platform)
+    {
+      case 'win32':
+        path = NodePath.join(os_homedir,'AppData','Local',opts.name);
+        break;
+      case 'darwin':
+      case 'linux':
+        path = NodePath.join(os_homedir,'.config',opts.name);
+        break;
+      default:
+        throw new Error('unsupported platform: '+ os_platform);
+    }
+
+    // mkdir
+    if ( opts.mkdir ) {
+      debug(ld.fx,'mkdirSync:',path);
+      NodeFs.mkdirSync(path, { recursive: true });
+    }
+
+    // build final path
+    if ( ! Util.isString(opts.fn) ) out = path;
+    else out = NodePath.join( path, opts.fn );
+
+    // return
+    debug(ld.fx,'→',out);
+    return out;
+  }
+  
+  static parse_argv()
+  {
+    const ld = { fx: '.parse_argv()' };
+
+    const av = process.argv.slice();
+    let out = {};
+
+    if ( ['node','node.exe'].includes( NodePath.basename(av[0]) ) )
+      av.shift();
+
+    out.script = av.shift();
+    out.name = NodePath.basename(out.script);
+    out.argv = av;
+
+    debug(ld.fx,'→',out);
+    return out;
+  }
 }
 
 module.exports = Util;
