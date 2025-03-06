@@ -1,7 +1,7 @@
 {
   "name": "@gsfjohnson/myconfig",
-  "version": "0.1.1",
-  "description": "MyConfig -- api to read write key values to local filesystem config file",
+  "version": "0.2.0",
+  "description": "MyConfig -- load save key values into platform config directory",
   "main": "index.js",
   "scripts": {
     "test": "mocha"
@@ -23,10 +23,6 @@
     "debug": "^4.4.0"
   },
   "devDependencies": {
-    "chai": "^5.2.0",
-    "minimist": "^1.2.8"
-  },
-  "dependencies": {
-    "json-query": "^2.2.2"
+    "chai": "^5.2.0"
   }
 }

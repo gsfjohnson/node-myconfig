@@ -4,7 +4,7 @@ const NodePath = require('node:path');
 const NodeFs = require('node:fs');
 const NodeFsPromise = require('node:fs/promises');
 
-const JsonQuery = require('json-query');
+//const JsonQuery = require('json-query');
 
 const Util = require('./util');
 const Ini = require('./ini');
