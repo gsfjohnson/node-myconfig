@@ -42,32 +42,21 @@ class MyConfig
     };
 
     // process options
-    if (!Array.isArray(options)) options = [];
-    while (options.length)
+    options.forEach( (opt) =>
     {
-      let opt = options.shift();
-      switch (Util.typeof(opt))
-      {
-        case 'map': opts.data = opt; break;
-        case 'string': opts.name = opt; break;
-        case 'object': Object.assign(opts,opt); break;
-      }
-    }
+      if (Util.isMap(opt)) opts.data = opt;
+      else if (Util.isString(opt)) opts.name = opt;
+      else if (Util.isObject(opt)) Object.assign(opts,opt);
+      else throw TypeError('invalid opt: '+ opt +'('+typeof opt+')');
+    });
 
     // sanity
     if (!Util.isString(opts.name)) throw new Error('invalid name: must be string');
     this.name = opts.name;
     if (Util.isString(opts.dir)) this.dir = opts.dir;
-    if ( Util.isMap(opts.data) ) {
-      //debug(fx,'opts.data:',opts.data);
-      //debug(fx,'opts.data.size:',opts.data.size);
-      //debug(fx,'opts.data.get(whatever):',opts.data.has('whatever'));
-      //let data = Array.from(opts.data);
-      //debug(fx,'data:',data);
-      //let clone = JSON.parse(JSON.stringify(data));
-      let clone = Util.deepCloneMap(opts.data);
-      debug(fx,'cloned:',clone);
-      this.data = clone; // deep clone
+    if (Util.isMap(opts.data)) {
+      if (opts.data.size) this.data = Util.deepCloneMap(opts.data);
+      else this.data = opts.data;
     }
 
     // process updated after construction phase
@@ -336,7 +325,7 @@ class MyConfig
       }
       else if (Util.isObject(opt)) Object.assign(opts,opt);
       else if (Util.isBoolean(opt)) opts.ignore_not_found = opt;
-      else throw new Error(`invalid option: ${opt}`);
+      else throw new Error('invalid option: '+ opt);
     });
 
     // sanity
@@ -346,7 +335,7 @@ class MyConfig
     if (opts.name.indexOf('\\')>-1) throw new Error('invalid opts.name, slash not allowed: '+ opts.name);
     if (path && !fn) fn = NodePath.basename(path);
     if (path && !dir) dir = NodePath.dirname(path);
-    if (!dir) dir = Util.osConfigPath(this.name); // do not mkdir
+    if (!dir) dir = Util.osConfigPath(opts.name); // do not mkdir
     if (!fn) fn = MyConfig.config_fn;
     if (fn && !ext) ext = NodePath.extname(fn);
     if (!['.ini','.json'].includes(ext)) throw new Error(`only ini/json supported: ${fn}`);
@@ -412,7 +401,7 @@ class MyConfig
     if (opts.name.indexOf('\\')>-1) throw new Error('invalid opts.name, slash not allowed: '+ opts.name);
     if (path && !fn) fn = NodePath.basename(path);
     if (path && !dir) dir = NodePath.dirname(path);
-    if (!dir) dir = Util.osConfigPath(this.name); // do not mkdir
+    if (!dir) dir = Util.osConfigPath(opts.name); // do not mkdir
     if (!fn) fn = MyConfig.config_fn;
     if (fn && !ext) ext = NodePath.extname(fn);
     if (!['.ini','.json'].includes(ext)) throw new Error(`only ini/json supported: ${fn}`);

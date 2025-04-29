@@ -3,47 +3,59 @@ const NodeOs = require('node:os');
 const NodePath = require('node:path');
 
 const argv = require('@gsfjohnson/argv').parse(
-  //[Boolean,'help','h'],
+  [Boolean,'help','h'],
+  [String,'name','n'], //appname
+  [String,'file','f'],
+  [String,'key','k'],
 );
 
 const MyConfig = require('../index');
 const Util = require('../util');
 
+function display_help()
+{
+  console.log(argv.script,'[-h] [-k key] [-f file] [value]');
+}
 
 async function main()
 {
-  let key, value, fn;
+  let key, name, value, fn;
 
-  // argv: key
-  if (argv._.length) key = argv._[0];
+  // argv
+  if (argv.help) { display_help(); process.exit(1) }
+  if (argv.key) key = argv.key;
   else key = 'whatever';
-  console.log('Key:',key);
-
-  // argv: value
-  if (argv._.length > 1) value = argv._[1];
+  if (argv.name) name = argv.name;
+  else name = 'testapp';
+  if (argv.file) fn = argv.file;
+  //else fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
+  if (argv._.length) value = argv._[0];
   else value = 23;
+
+  // debug
+  console.log('Config file:',fn);
+  console.log('Key:',key);
   console.log('Value:',value);
 
-  // argv: filename
-  if (argv._.length > 2) fn = argv._[2];
-  console.log('*** fn:',fn);
-
   // load
-  let ignore_not_found = true;
-  console.log('*** cfg = await MyConfig.load(testapp, true) ...');
-  let cfg = await MyConfig.load('testapp', ignore_not_found);
+  const params = { ignore_not_found: true };
+  if (name) params.name = name;
+  if (fn) params.fn = fn;
+  console.log('*** cfg = await MyConfig.load() <--',params);
+  let cfg = await MyConfig.load(params);
+  console.log('*** cfg -->',cfg);
 
   // display key=value
-  if (key) console.log('*** cfg.get(',key,')', cfg.get(key) );
-  else console.log('*** cfg.data:', cfg.data );
+  console.log('*** cfg.get(',key,') -->', cfg.get(key) );
 
   // set key=value
   console.log('*** cfg.set() <--',key,value);
   cfg.set(key,value);
 
-  console.log(`*** await cfg.save(fn) ...`);
+  // save
+  console.log('*** await cfg.save(fn) <--',fn);
   let result = await cfg.save(fn);
-  console.log('result:',result);
+  console.log('cfg.save(fn) -->',result);
 
 }
 

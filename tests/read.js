@@ -26,12 +26,17 @@ async function main()
   if (argv.key) key = argv.key;
   if (argv.name) name = argv.name;
   else name = 'testapp';
-  if (argv.file) fn = argv.file;
-  else fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
-  console.log('*** fn:',fn);
+  if (argv.file) {
+    fn = argv.file;
+    console.log('*** fn:',fn);
+  }
 
-  console.log('*** cfg = await MyConfig.load() <--',name,fn);
-  let cfg = await MyConfig.load(name,fn);
+  const params = { ignore_not_found: true };
+  if (name) params.name = name;
+  if (fn) params.fn = fn;
+  console.log('*** cfg = await MyConfig.load() <--',params);
+  let cfg = await MyConfig.load(params);
+  console.log('cfg -->',cfg);
 
   if (key) console.log('*** cfg.get(',key,') -->', cfg.get(key) );
   else console.log('*** cfg.data:', cfg.data );

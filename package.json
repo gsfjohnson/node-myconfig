@@ -1,6 +1,6 @@
 {
   "name": "@gsfjohnson/myconfig",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "MyConfig -- load save key values into platform config directory",
   "main": "index.js",
   "scripts": {
