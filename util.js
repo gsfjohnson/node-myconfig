@@ -146,13 +146,13 @@ class Util
    * @param {Object} obj - The object to convert
    * @returns {Map} - The resulting Map containing all key-value pairs from the object
    */
-  static objectToMap(obj)
+  static objectToMap(obj,map)
   {
     const fx = '.objectToMap()';
 
     if (!Util.isObject(obj) || obj === null) throw new TypeError('Input must be an object');
     
-    const map = new Map();
+    if (!map) map = new Map();
     
     Object.entries(obj).forEach(([key, value]) =>
     {
@@ -317,10 +317,10 @@ class Util
   // not appropriate for big streams
   static streamToBuffer(stream)
   {
-    const ld = { fx: '.streamToBuffer()' };
+    const fx = '.streamToBuffer()';
 
     if (!Util.isReadable(stream)) throw new Error(`not a stream: ${stream}`);
-    debug(ld.fx,stream.constructor.name);
+    debug(fx,stream.constructor.name);
 
     return new Promise( function(resolve, reject)
     {
@@ -331,12 +331,12 @@ class Util
           let err = new Error('invalid data type: '+ Util.typeof(chunk));
           return stream.destroy(err);
         }
-        debug(ld.fx,'saving',chunk);
+        debug(fx,'saving',chunk);
         arrayOfBuffers.push(chunk);
       }
       let _on_close = () => {
         let buffers = Buffer.concat(arrayOfBuffers);
-        debug(ld.fx,'resolve →',buffers);
+        debug(fx,'resolve →',buffers);
         resolve(buffers);
       };
       stream.on('close',_on_close);
@@ -369,7 +369,7 @@ class Util
 
   static parse_system_path(dir)
   {
-    const ld = { cl: 'Util', fx: '._parse_system_path()' };
+    const fx = '._parse_system_path()';
 
     // convert strings to array
     if ( typeof dir == 'string' ) dir = dir.split(S3_Sep);
@@ -402,21 +402,28 @@ class Util
     return dir;
   }
 
-  static os_local_path(opts)
+  static osConfigPath(...options)
   {
-    const ld = { fx: '.os_local_path()' };
-    debug(ld.fx,'←',opts);
+    const fx = '.osConfigPath()';
+    debug(fx,'←',...options);
 
     // initial
-    let out, name;
+    let out, opts = {};
     let os_platform = NodeOs.platform();
     let os_homedir = NodeOs.homedir();
 
-    // sanity: opts
-    if (Util.isString(opts)) opts = { name: opts };
-    if (!Util.isPureObject(opts)) opts = {};
-    if (!Util.isString(opts.name))
-      throw new Error(`invalid opts.name: ${opts.name}`);
+    // process options
+    options.forEach( (opt) => {
+      if (Util.isBoolean(opt)) opts.mkdir = opt;
+      if (Util.isString(opt)) opts.name = opt;
+      if (Util.isObject(opt)) Object.assign(opts,opt);
+    });
+
+    // sanity
+    if (!Util.isString(opts.name)) throw new TypeError(`invalid opts.name: ${opts.name}`);
+    if (opts.name.indexOf('.')>-1) throw new Error('invalid opts.name: '+ opts.name);
+    if (opts.name.indexOf('/')>-1) throw new Error('invalid opts.name: '+ opts.name);
+    if (opts.name.indexOf('\\')>-1) throw new Error('invalid opts.name: '+ opts.name);
 
     // operation
     let path;
@@ -426,6 +433,8 @@ class Util
         path = NodePath.join(os_homedir,'AppData','Local',opts.name);
         break;
       case 'darwin':
+        path = NodePath.join(os_homedir,'Library','Application Support',opts.name)
+        break;
       case 'linux':
         path = NodePath.join(os_homedir,'.config',opts.name);
         break;
@@ -435,7 +444,7 @@ class Util
 
     // mkdir
     if ( opts.mkdir ) {
-      debug(ld.fx,'mkdirSync:',path);
+      debug(fx,'mkdirSync:',path);
       NodeFs.mkdirSync(path, { recursive: true });
     }
 
@@ -444,13 +453,13 @@ class Util
     else out = NodePath.join( path, opts.fn );
 
     // return
-    debug(ld.fx,'→',out);
+    debug(fx,'→',out);
     return out;
   }
   
   static parse_argv()
   {
-    const ld = { fx: '.parse_argv()' };
+    const fx = '.parse_argv()';
 
     const av = process.argv.slice();
     let out = {};
@@ -462,7 +471,7 @@ class Util
     out.name = NodePath.basename(out.script);
     out.argv = av;
 
-    debug(ld.fx,'→',out);
+    debug(fx,'→',out);
     return out;
   }
 }

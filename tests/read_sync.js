@@ -2,16 +2,19 @@
 const NodeOs = require('node:os');
 const NodePath = require('node:path');
 
+const argv = require('@gsfjohnson/argv').parse(
+  //[Boolean,'help','h'],
+);
+  
 const MyConfig = require('../index');
 const Util = require('../util');
 
 let key, fn;
-let cl = Util.parse_argv();
 
 // argv: key
 if ( cl.argv.length > 0 ) {
-key = cl.argv[0];
-console.log('Key:',key);
+  key = cl.argv[0];
+  console.log('Key:',key);
 }
 
 // argv: filename

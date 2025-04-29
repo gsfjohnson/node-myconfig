@@ -92,10 +92,10 @@ describe('MyConfig', function()
       // success
     });
 
-    it('cfg = MyConfig.load( cfg_fn, { name: "testapp" } ) --> instanceof MyConfig', async function()
+    it('cfg = MyConfig.load("testapp", cfg_fn) --> instanceof MyConfig', async function()
     {
       let fn = ''+cfg_fn;
-      const result = await MyConfig.load( fn, { name: 'testapp' } );
+      const result = await MyConfig.load( 'testapp', fn );
 
       // test result
       const expected = true;

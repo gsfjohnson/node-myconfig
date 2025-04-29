@@ -210,19 +210,20 @@ class Ini
     const ld = { fx: '.decode()' };
     debug(ld.fx,'←',...options);
 
-    let str, opts = {}
+    let str, out, opts = {}
 
     // parse options
     while (options.length) {
       let opt = options.shift();
       if (Util.isString(opt)) { str = opt; continue }
+      else if (Util.isMap(opt)) out = opt;
       else if (Util.isPureObject(opt)) Object.assign(opts,opt);
       else throw new Error(`invalid option: ${opt}`);
     }
     
     // initial
+    if (!out) out = new Map();
     opts.bracketedArray = opts.bracketedArray !== false
-    const out = new Map();
     let p = out;
     let section = null
     //          section          |key      = value

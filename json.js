@@ -6,11 +6,6 @@ catch (e) { debug = function(){}; } // empty stub
 
 class Json
 {
-  whatever()
-  {
-    // ahah
-  }
-
   static encode(obj)
   {
     const ld = { fx: '.encode()' };
@@ -22,14 +17,14 @@ class Json
     return out;
   }
 
-  static decode(str)
+  static decode(str,data)
   {
     const ld = { fx: '.decode()' };
     if (Buffer.isBuffer(str)) str = str.toString('utf8');
     if (!Util.isString(str)) throw new Error(`invalid string: ${str}`);
     //debug(ld.fx,'←',str);
     let out = JSON.parse(str);
-    out = Util.objectToMap(out);
+    out = Util.objectToMap(out,data);
     debug(ld.fx,'→',out);
     return out;
   }

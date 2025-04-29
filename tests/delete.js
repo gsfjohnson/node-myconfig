@@ -2,6 +2,10 @@
 const NodeOs = require('node:os');
 const NodePath = require('node:path');
 
+const argv = require('@gsfjohnson/argv').parse(
+  //[Boolean,'help','h'],
+);
+
 const MyConfig = require('../index');
 const Util = require('../util');
 
@@ -9,15 +13,14 @@ const Util = require('../util');
 async function main()
 {
   let key, fn;
-  let cl = Util.parse_argv();
 
   // argv: key
-  if ( cl.argv.length > 0 ) key = cl.argv[0];
+  if (argv._.length) key = argv._[0];
   else key = 'whatever';
   console.log('Key:',key);
 
   // argv: filename
-  if ( cl.argv.length > 1 ) fn = cl.argv[1];
+  if (argv.length > 1) fn = argv._[1];
   else fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
   console.log('*** fn:',fn);
 

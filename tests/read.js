@@ -2,29 +2,38 @@
 const NodeOs = require('node:os');
 const NodePath = require('node:path');
 
+const argv = require('@gsfjohnson/argv').parse(
+  [Boolean,'help','h'],
+  [String,'name','n'], //appname
+  [String,'file','f'],
+  [String,'key','k'],
+);
+
 const MyConfig = require('../index');
 const Util = require('../util');
 
+function display_help()
+{
+  console.log(argv.script,'[-h] [-k key] [-f file]');
+}
+
 async function main()
 {
-  let key, fn;
-  let cl = Util.parse_argv();
+  let key, fn, name;
 
-  // argv: key
-  if ( cl.argv.length > 0 ) {
-    key = cl.argv[0];
-    console.log('Key:',key);
-  }
-
-  // argv: filename
-  if ( cl.argv.length > 2 ) fn = cl.argv[2];
+  // argv
+  if (argv.help) { display_help(); process.exit(1) }
+  if (argv.key) key = argv.key;
+  if (argv.name) name = argv.name;
+  else name = 'testapp';
+  if (argv.file) fn = argv.file;
   else fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
   console.log('*** fn:',fn);
 
-  console.log('*** cfg = await MyConfig.loadFromFile(fn) ...');
-  let cfg = await MyConfig.loadFromFile(fn, { name: 'testapp' });
+  console.log('*** cfg = await MyConfig.load() <--',name,fn);
+  let cfg = await MyConfig.load(name,fn);
 
-  if (key) console.log('*** cfg.get(',key,')', cfg.get(key) );
+  if (key) console.log('*** cfg.get(',key,') -->', cfg.get(key) );
   else console.log('*** cfg.data:', cfg.data );
 
 }
