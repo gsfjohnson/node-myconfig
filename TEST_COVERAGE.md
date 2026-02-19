@@ -8,7 +8,7 @@ Generated: 2026-02-19
 |--------|------------------:|-------:|---------:|---------:|
 | index.js (MyConfig) | 12 | 7 | 5 | ~58% |
 | ini.js (Ini) | 7 | 7 | 0 | ~100% |
-| json.js (Json) | 2 | 2 | 0 | 100% |
+| json.js (Json) | 2 | 2 | 0 | 100% \u2705 |
 | util.js (Util) | 25 | 25 | 0 | 100% |
 | **Overall** | **46** | **41** | **5** | **~89%** |
 
@@ -99,21 +99,25 @@ Generated: 2026-02-19
 
 ## Module: json.js (Json class)
 
-**Test file:** `test/07_json.js` (12 tests)
+**Test file:** `test/07_json.js` (21 tests)
 
 ### Covered
 
 | Function | What's Tested |
 |----------|---------------|
-| `Json.encode()` | Object encoding, Map conversion via `mapToObject`, nested structures |
-| `Json.decode()` | JSON string, Buffer input, nested object-to-Map, invalid input types (number, null, undefined, object), invalid JSON strings |
-| Round-trip | Encode/decode preserves data; empty objects handled |
+| `Json.encode()` | Simple Map, nested Maps, arrays, mixed value types (string/number/boolean/array), empty Map, return type is string, null values silently dropped (mapToObject excludes them) |
+| `Json.decode()` | JSON string, Buffer input, nested object-to-Map (3 levels deep), array preservation, various JSON types (string/number/boolean/null), empty object, `data` parameter (pre-existing Map merge with overwrite and preservation), invalid input types (number, null, undefined, object, array, boolean), invalid JSON strings (malformed, truncated, empty, `"undefined"`) |
+| Round-trip | Complex structures (string/number/boolean/array/nested), empty Map, deeply nested Maps (3 levels), arrays containing objects |
+
+### Known Behaviors Found During Testing
+
+| Behavior | Description |
+|----------|-------------|
+| `Json.encode()` — null values | Null values in a Map are silently dropped because `Util.mapToObject()` excludes types not in its switch cases. Null round-trips are not supported. |
 
 ### Not Covered
 
-| Path | Gap |
-|------|-----|
-| `Json.decode()` — `data` parameter | Passing a pre-existing Map to merge into |
+All code paths in json.js are fully covered.
 
 ---
 

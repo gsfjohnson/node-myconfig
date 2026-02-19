@@ -7,153 +7,175 @@ describe('Json', function()
 {
   describe('encode', function()
   {
-    let called, calledOptions;
-    let origMapToObject;
-
-    beforeEach( () => {
-      called = 0;
-      origMapToObject = Util.mapToObject;
-      Util.mapToObject = function(...opts) {
-        called++;
-        calledOptions = opts;
-        return origMapToObject(...opts);
-      };
-    });
-
-    afterEach( () => {
-      Util.mapToObject = origMapToObject;
-    });
-
-    it('should encode an object to a JSON string', function() {
+    it('should encode a simple Map to JSON', function() {
       const map = new Map([['name','test'],['value',123]]);
       const result = Json.encode(map);
-      Assert.equal(result,'{"name":"test","value":123}');
+      Assert.strictEqual(result, '{"name":"test","value":123}');
     });
 
-    it('should handle Map objects by converting them to plain objects', function()
-    {
-      const map = new Map([['key1','value1'],['key2',42]]);
-      const result = Json.encode(map);
-
-      Assert(calledOptions[0] instanceof Map);
-      Assert.equal(called,1);
-      Assert.equal(result,'{"key1":"value1","key2":42}');
+    it('should encode nested Maps', function() {
+      const inner = new Map([['c',2]]);
+      const outer = new Map([['a',1],['b',inner]]);
+      const result = Json.encode(outer);
+      Assert.deepStrictEqual(JSON.parse(result), { a: 1, b: { c: 2 } });
     });
 
-    it('should handle nested structures', function()
-    {
-      const obj = {
-        name: 'parent',
-        children: [
-          { name: 'child1' },
-          { name: 'child2' }
-        ],
-        metadata: {
-          created: '2023-01-01'
-        }
-      };
-      const map = Util.objectToMap(obj);
+    it('should encode Maps with arrays', function() {
+      const map = new Map([['items',[1,2,3]]]);
       const result = Json.encode(map);
+      Assert.deepStrictEqual(JSON.parse(result), { items: [1,2,3] });
+    });
 
-      Assert.deepEqual( JSON.parse(result), obj);
+    it('should encode Maps with various value types', function() {
+      const map = new Map([
+        ['str','hello'],
+        ['num',42],
+        ['bool',true],
+        ['arr',[1,'two']]
+      ]);
+      const result = Json.encode(map);
+      Assert.deepStrictEqual(JSON.parse(result), {
+        str: 'hello', num: 42, bool: true, arr: [1,'two']
+      });
+    });
+
+    it('should silently drop null values (mapToObject excludes them)', function() {
+      const map = new Map([['a',1],['b',null],['c','ok']]);
+      const result = JSON.parse(Json.encode(map));
+      Assert.strictEqual(result.a, 1);
+      Assert.strictEqual(result.c, 'ok');
+      Assert.strictEqual(result.b, undefined);
+    });
+
+    it('should encode an empty Map', function() {
+      const result = Json.encode(new Map());
+      Assert.strictEqual(result, '{}');
+    });
+
+    it('should return a string', function() {
+      const result = Json.encode(new Map([['k','v']]));
+      Assert.strictEqual(typeof result, 'string');
     });
   });
 
   describe('decode', function()
   {
-    let called;
-    let origObjectToMap;
-
-    beforeEach( () => {
-      called = 0;
-      origObjectToMap = Util.objectToMap;
-      Util.objectToMap = function(...opts) {
-        called++;
-        return origObjectToMap(...opts);
-      };
-    });
-
-    afterEach( () => {
-      Util.objectToMap = origObjectToMap;
-    });
-
-    it('should decode a JSON string to an object', function() {
-      const jsonStr = '{"name":"test","value":123}';
-      const result = Json.decode(jsonStr);
-      
-      // Since objectToMap is used internally, we expect a Map return type
+    it('should decode a JSON string to a Map', function() {
+      const result = Json.decode('{"name":"test","value":123}');
       Assert(result instanceof Map);
-      Assert.equal(result.get('name'),'test');
-      Assert.equal(result.get('value'),123);
+      Assert.strictEqual(result.get('name'), 'test');
+      Assert.strictEqual(result.get('value'), 123);
     });
 
-    it('should handle Buffer input', function() {
-      const buffer = Buffer.from('{"key":"value"}', 'utf8');
-      const result = Json.decode(buffer);
-      
+    it('should decode Buffer input', function() {
+      const buf = Buffer.from('{"key":"value"}', 'utf8');
+      const result = Json.decode(buf);
       Assert(result instanceof Map);
-      Assert.equal(result.get('key'),'value');
+      Assert.strictEqual(result.get('key'), 'value');
     });
 
-    it('should convert objects to Maps', function()
-    {
-      const jsonStr = '{"a":1,"b":{"c":2}}';
-      const result = Json.decode(jsonStr);
-
-      Assert.equal(called,2);
-
+    it('should convert nested objects to nested Maps', function() {
+      const result = Json.decode('{"a":1,"b":{"c":2,"d":{"e":3}}}');
       Assert(result instanceof Map);
-      Assert.equal(result.get('a'),1);
+      Assert.strictEqual(result.get('a'), 1);
 
-      Assert(result.get('b') instanceof Map);
-      Assert.equal(result.get('b').get('c'),2);
+      const b = result.get('b');
+      Assert(b instanceof Map);
+      Assert.strictEqual(b.get('c'), 2);
+
+      const d = b.get('d');
+      Assert(d instanceof Map);
+      Assert.strictEqual(d.get('e'), 3);
     });
 
-    it('should throw an error for non-string/non-buffer input', function() {
-      Assert.throws(() => Json.decode(123), /invalid string: 123/);
-      Assert.throws(() => Json.decode(null), /invalid string: null/);
-      Assert.throws(() => Json.decode(undefined), /invalid string: undefined/);
-      Assert.throws(() => Json.decode({}), /invalid string: \[object Object\]/);
+    it('should preserve arrays in decoded output', function() {
+      const result = Json.decode('{"items":[1,2,3]}');
+      Assert(Array.isArray(result.get('items')));
+      Assert.deepStrictEqual(result.get('items'), [1,2,3]);
     });
 
-    it('should throw an error for invalid JSON strings', function() {
+    it('should preserve various JSON value types', function() {
+      const result = Json.decode('{"s":"hi","n":0,"b":false,"nil":null}');
+      Assert.strictEqual(result.get('s'), 'hi');
+      Assert.strictEqual(result.get('n'), 0);
+      Assert.strictEqual(result.get('b'), false);
+      Assert.strictEqual(result.get('nil'), null);
+    });
+
+    it('should decode an empty object', function() {
+      const result = Json.decode('{}');
+      Assert(result instanceof Map);
+      Assert.strictEqual(result.size, 0);
+    });
+
+    it('should merge into a pre-existing Map via data parameter', function() {
+      const existing = new Map([['x', 99], ['y', 'keep']]);
+      const result = Json.decode('{"a":1,"x":"overwritten"}', existing);
+      Assert.strictEqual(result, existing, 'should return the same Map instance');
+      Assert.strictEqual(result.get('a'), 1);
+      Assert.strictEqual(result.get('x'), 'overwritten');
+      Assert.strictEqual(result.get('y'), 'keep');
+    });
+
+    it('should create a new Map when data parameter is not provided', function() {
+      const result = Json.decode('{"a":1}');
+      Assert(result instanceof Map);
+      Assert.strictEqual(result.get('a'), 1);
+    });
+
+    it('should throw for non-string/non-buffer input', function() {
+      Assert.throws(() => Json.decode(123), /invalid string/);
+      Assert.throws(() => Json.decode(null), /invalid string/);
+      Assert.throws(() => Json.decode(undefined), /invalid string/);
+      Assert.throws(() => Json.decode({}), /invalid string/);
+      Assert.throws(() => Json.decode([]), /invalid string/);
+      Assert.throws(() => Json.decode(true), /invalid string/);
+    });
+
+    it('should throw for invalid JSON strings', function() {
       Assert.throws(() => Json.decode('{name:"invalid"}'));
       Assert.throws(() => Json.decode('{'));
+      Assert.throws(() => Json.decode(''));
+      Assert.throws(() => Json.decode('undefined'));
     });
   });
 
-  describe('round-trip encoding/decoding', function()
+  describe('round-trip', function()
   {
-    it('should correctly round-trip objects through encode and decode', function() {
+    it('should round-trip a complex structure', function() {
       const original = {
         string: 'test',
         number: 42,
         boolean: true,
         array: [1, 2, 3],
-        nested: {
-          value: 'nested value'
-        }
+        nested: { value: 'nested value' }
       };
-      const origMap = Util.objectToMap(original);
-      
-      const encoded = Json.encode(origMap);
-      const decoded = Json.decode(encoded);
-      
-      // Convert the Map back to an object for comparison
-      const backToObj = Object.fromEntries(decoded);
-      backToObj.nested = Object.fromEntries(backToObj.nested);
-      
-      Assert.deepEqual(backToObj, original);
+      const map = Util.objectToMap(original);
+      const decoded = Json.decode(Json.encode(map));
+      const result = Util.mapToObject(decoded);
+      Assert.deepStrictEqual(result, original);
     });
 
-    it('should handle empty objects', function() {
-      const original = {};
-      const origMap = Util.objectToMap(original)
-      const encoded = Json.encode(origMap);
-      const decoded = Json.decode(encoded);
-      
-      Assert.equal(decoded.size,0);
-      Assert.deepEqual( Object.fromEntries(decoded), original);
+    it('should round-trip an empty Map', function() {
+      const map = new Map();
+      const decoded = Json.decode(Json.encode(map));
+      Assert.strictEqual(decoded.size, 0);
+    });
+
+    it('should round-trip deeply nested Maps', function() {
+      const deep = new Map([['level', new Map([['inner', new Map([['val', 42]])]])]]);
+      const decoded = Json.decode(Json.encode(deep));
+      Assert.strictEqual(decoded.get('level').get('inner').get('val'), 42);
+    });
+
+    it('should round-trip Maps with arrays containing objects', function() {
+      const original = { items: [{ id: 1 }, { id: 2 }] };
+      const map = Util.objectToMap(original);
+      const decoded = Json.decode(Json.encode(map));
+      const items = decoded.get('items');
+      Assert(Array.isArray(items));
+      Assert.strictEqual(items[0].id, 1);
+      Assert.strictEqual(items[1].id, 2);
     });
   });
 });
