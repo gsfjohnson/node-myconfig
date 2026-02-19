@@ -23,8 +23,8 @@ const MyConfig = require('@gsfjohnson/myconfig');
 
 // Create a new configuration
 async function example() {
-  // Load config from a file (creates if doesn't exist)
-  const config = await MyConfig.load('myapp');
+  // Load config from a file (pass true to ignore file-not-found errors)
+  const config = await MyConfig.load('myapp', true);
   
   // Set values (supports dot notation for nesting)
   config.set('server.host', 'localhost');
@@ -51,7 +51,7 @@ function syncExample() {
   config.set('app.version', '1.0.0');
   
   // Save config synchronously
-  config.savesync();
+  config.saveSync();
 }
 ```
 
@@ -62,11 +62,17 @@ function syncExample() {
 - `new MyConfig(options)` - Creates a new configuration instance
   - `options.name` - Name of the application (required)
   - `options.data` - Initial configuration data as a Map
+  - `options.dir` - Override the config directory path
 
 ### Static Methods
 
 - `MyConfig.load(name, [options])` - Load configuration (async)
 - `MyConfig.loadSync(name, [options])` - Load configuration
+
+Options can be passed as individual arguments or as an object:
+- `name` (string) - Application name, used for config path generation
+- `ignore_not_found` (boolean) - If `true`, suppress errors when the config file doesn't exist
+- A string with `.ini` or `.json` extension is treated as a file path to load from
 
 ### Instance Methods
 
@@ -84,8 +90,20 @@ function syncExample() {
 ## File Locations
 
 By default, configuration files are stored in platform-specific locations:
-- Windows: `%APPDATA%\myapp\config.ini`
+- Windows: `%LOCALAPPDATA%\myapp\config.ini`
 - macOS: `~/Library/Application Support/myapp/config.ini`
 - Linux: `~/.config/myapp/config.ini`
 
 You can specify a custom path when saving or loading.
+
+## Debugging
+
+This package uses the optional [`debug`](https://www.npmjs.com/package/debug) module. Enable debug output with:
+
+```bash
+DEBUG=myconfig* node your-app.js
+```
+
+## Requirements
+
+- Node.js >= 12.9.0
