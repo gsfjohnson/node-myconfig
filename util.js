@@ -186,8 +186,12 @@ class Util
           break;
         case 'number':
           obj[key] = ''+value;
+          break;
         case 'string':
         case 'symbol':
+          obj[key] = value;
+          break;
+        case 'array':
           obj[key] = value;
           break;
         case 'map':

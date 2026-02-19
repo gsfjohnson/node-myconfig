@@ -97,7 +97,7 @@ describe('Ini', function()
       const result = Ini.encode(map);
       // Expect all keys and values to be properly escaped
       Assert(result.includes('"key with spaces"'));
-      Assert(result.includes('quotes="quoted string"'));
+      Assert(result.includes('quotes="\\"quoted string\\""'));
       Assert(result.includes('semicolon=text\\;with\\;semicolons'));
       Assert(result.includes('hash=text\\#with\\#hash'));
     });

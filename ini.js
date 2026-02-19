@@ -43,7 +43,7 @@ function safe(val)
 {
   if (
     typeof val !== 'string' ||
-    val.match(/[=\r\n]/) ||
+    val.match(/[=\s]/) ||
     val.match(/^\[/) ||
     (val.length > 1 && isQuoted(val)) ||
     val !== val.trim()
@@ -227,7 +227,7 @@ class Ini
     let p = out;
     let section = null
     //          section          |key      = value
-    const re = /^\[([^\]]*)\]\s*$|^([^=]+)(=(.*))?$/i
+    const re = /^\[([^\]]*)\]\s*$|^("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|[^=]+)(=(.*))?$/i
     const duplicates = {}
 
     // initial parse input
