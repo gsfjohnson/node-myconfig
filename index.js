@@ -146,6 +146,9 @@ class MyConfig
     }
     //debug(fx,'data:',data);
 
+    // if keys remain, the full path was not resolved
+    if (keys.length) data = undefined;
+
     // always deep clone
     if (Util.isMap(data)) data = Util.deepCloneMap(data);
     out = data;
@@ -260,7 +263,7 @@ class MyConfig
     // encode
     if (data.size==0) str = '';
     else if (ext=='.ini') str = Ini.encode( data );
-    else if (ext=='.json') str = Json.encode( Util.mapToObject(data) );
+    else if (ext=='.json') str = Json.encode( data );
 
     // write
     await NodeFs.promises.writeFile( fn, str, { encoding: 'utf8' } );
@@ -297,7 +300,7 @@ class MyConfig
     let str;
     if (data.size==0) str = '';
     else if (ext=='.ini') str = Ini.encode( data );
-    else if (ext=='.json') str = Json.encode( Util.mapToObject(data) );
+    else if (ext=='.json') str = Json.encode( data );
 
     // write
     NodeFs.writeFileSync(fn, str, { encoding: 'utf8' });
@@ -386,7 +389,7 @@ class MyConfig
     options.forEach( (opt) => {
       if (Util.isString(opt)) {
         if (['.ini','.json'].includes(NodePath.extname(opt)))
-          fn = opt;
+          path = opt;
         else opts.name = opt;
       }
       else if (Util.isObject(opt)) Object.assign(opts,opt);

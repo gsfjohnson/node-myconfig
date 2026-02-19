@@ -6,65 +6,82 @@ Generated: 2026-02-19
 
 | Module | Methods/Functions | Tested | Untested | Coverage |
 |--------|------------------:|-------:|---------:|---------:|
-| index.js (MyConfig) | 12 | 7 | 5 | ~58% |
+| index.js (MyConfig) | 12 | 12 | 0 | ~100% |
 | ini.js (Ini) | 7 | 7 | 0 | ~100% |
-| json.js (Json) | 2 | 2 | 0 | 100% \u2705 |
+| json.js (Json) | 2 | 2 | 0 | 100% ✅ |
 | util.js (Util) | 25 | 25 | 0 | 100% |
-| **Overall** | **46** | **41** | **5** | **~89%** |
+| **Overall** | **46** | **46** | **0** | **~100%** |
 
 ## Test Infrastructure
 
 - **Framework:** Mocha (via `npm test`)
 - **Assertions:** Node.js built-in `assert`
-- **Automated tests:** `test/` directory (4 files, run by Mocha)
+- **Automated tests:** `test/` directory (5 files, 290 tests passing, run by Mocha)
 - **Manual scripts:** `tests/` directory (6 files, CLI scripts — not part of automated suite)
 
 ---
 
 ## Module: index.js (MyConfig class)
 
-**Test file:** `test/25_config.js` (10 tests, 2 skipped)
+**Test files:** `test/25_config.js` (10 tests, 2 skipped), `test/26_config.js` (100 tests)
 
 ### Covered
 
 | Method | What's Tested |
 |--------|---------------|
-| `constructor(name)` | String name argument, returns `instanceof MyConfig` |
-| `set(key, val)` | Simple (non-dotted) key, returns `true` |
-| `get(key)` | Simple key retrieval after set and after load |
-| `delete(key)` | Simple key deletion, returns `true`; verified `get()` returns `undefined` after |
-| `save(fn)` | Async save to explicit INI file path |
-| `static load(name, fn)` | Async load with name + explicit INI file path |
-| `dirty` (getter/setter) | Verified `dirty === 1` after `set()`, `dirty === 0` after `save()` |
+| `constructor(name)` | String name argument, returns `instanceof MyConfig`, `name` and `data` properties set, `id` starts with `mycfg_`, object is frozen |
+| `constructor(Map)` | Initial Map data, deep clones non-empty Maps, assigns empty Map directly |
+| `constructor(Object)` | Options object with `{ name }`, `{ name, dir }`, `{ name, data }` |
+| `constructor(name, Map)` | Mixed positional args: string name + Map data |
+| `constructor()` (error) | Missing name, non-string name (number), invalid option types (array, boolean) |
+| `set(key, val)` | Simple key returns `true`, stores value retrievable by `get()` |
+| `set()` — dotted keys | `"a.b"` and `"a.b.c"` create nested Maps, preserves sibling keys, overwrites non-Map intermediate |
+| `set()` — dirty tracking | Increments dirty count per call |
+| `set()` — invalid key | Throws on non-string (number), null, undefined |
+| `get(key)` | Simple key retrieval, dotted key `"a.b.c"` traversal |
+| `get()` — deep clone return | Intermediate dotted key returns deep-cloned Map; mutation of clone does not affect config |
+| `get()` — non-existent keys | Returns `undefined` for missing simple key, missing dotted key, traversal past leaf |
+| `get()` — invalid key | Throws on non-string (number), null |
+| `delete(key)` | Simple key deletion returns `true`, `get()` returns `undefined` after |
+| `delete()` — dotted keys | `"a.b.c"` nested deletion returns `true` |
+| `delete()` — non-existent key | Returns `false` for missing simple key, missing dotted key, partially-existent dotted key |
+| `delete()` — leading dot | `".key"` works (leading empty segment is stripped) |
+| `delete()` — invalid key | Throws on non-string (number), null |
+| `doesConfigPathExist()` | Is a function, returns `undefined` (empty stub) |
+| `save(fn)` — INI | Async save to INI file → `true`, writes correct content, empty data writes empty string, resets dirty to 0 |
+| `save(fn)` — JSON | Async save to JSON file → `true`, writes valid JSON |
+| `save()` — unsupported ext | Throws error for non-ini/json extensions |
+| `saveSync(fn)` — INI | Sync save to INI file → `true`, writes correct content, empty data writes empty string, resets dirty to 0 |
+| `saveSync(fn)` — JSON | Sync save to JSON file → `true`, writes valid JSON |
+| `saveSync()` — unsupported ext | Throws error for non-ini/json extensions |
+| `static load(name, fn)` — INI | Async load INI file → `instanceof MyConfig`, reads correct data, sets `name` |
+| `static load()` — JSON | Async load JSON file → `instanceof MyConfig`, reads correct data |
+| `static load()` — ignore_not_found | `true` on missing file → empty config; `false`/absent → throws `ENOENT` |
+| `static load()` — validation | Missing name, name with dot/forward-slash/backslash, invalid option type (number) |
+| `static loadSync(name, fn)` — INI | Sync load INI file → `instanceof MyConfig`, reads correct data, sets `name` |
+| `static loadSync()` — JSON | Sync load JSON file → `instanceof MyConfig`, reads correct data |
+| `static loadSync()` — ignore_not_found | `true` on missing file → empty config; `false`/absent → throws `ENOENT` |
+| `static loadSync()` — validation | Missing name, name with dot/forward-slash/backslash, invalid option type (number) |
+| `static setDirty()` | Pushes key into array, skips duplicates, returns `undefined` for non-array/null first argument |
+| `dirty` (getter) | Returns 0 on new config, increments with `set()` |
+| `dirty` (setter) | Resets to 0 on `null`, accepts array, throws on invalid parameter (number, object) |
+| Round-trip | Async INI/JSON save → load; sync INI/JSON saveSync → loadSync; dotted keys through INI and JSON |
+| Static properties | `MyConfig.config_fn === "config.ini"`, `MyConfig.pd === true` |
+
+### Issues Fixed During Testing
+
+| Issue | Description | Fix |
+|-------|-------------|-----|
+| `save()` / `saveSync()` — JSON format | Lines 263/300 called `Json.encode( Util.mapToObject(data) )` but `Json.encode()` internally also calls `Util.mapToObject()`, causing a double-conversion `TypeError`. | Changed to `Json.encode( data )`. |
+| `loadSync()` — path building | Option parser (line 389) set local variable `fn = opt` for file-path strings, but `load()` (line 323) correctly sets `path = opt`. This caused `loadSync()` to build an invalid path via `join(osConfigPath, fullAbsolutePath)`. | Changed `fn = opt` to `path = opt`. |
+| `get()` — traversal past leaf | `get("a.b.c.d")` where `a.b.c` is a non-Map value returned that value instead of `undefined`. The `while` loop broke on non-Map data but returned whatever `data` held at that point. | Added `if (keys.length) data = undefined;` after the loop to return `undefined` when the path is not fully resolved. |
 
 ### Not Covered
 
 | Method / Path | Gap |
 |---------------|-----|
-| `constructor(Map)` | Constructing with initial Map data |
-| `constructor(Object)` | Constructing with options object (e.g. `{ name, dir, data }`) |
-| `constructor()` (error) | Invalid options / missing name error paths |
-| `set()` — dotted keys | Nested key creation via `"a.b.c"` syntax |
-| `set()` — invalid key | Non-string key error path |
-| `get()` — dotted keys | Nested key traversal via `"a.b.c"` syntax |
-| `get()` — deep clone return | Verifying returned Maps are clones, not references |
-| `get()` — invalid key | Non-string key error path |
-| `delete()` — dotted keys | Nested key deletion |
-| `delete()` — non-existent key | Returns `false` when key not found |
-| `delete()` — invalid key | Non-string key error path |
-| `doesConfigPathExist()` | Empty stub — no implementation or tests |
-| `save()` — auto path | Save without explicit filename (uses `osConfigPath`) |
-| `save()` — JSON format | Save to `.json` file |
-| `save()` — unsupported ext | Error on non-ini/json extension |
-| `save()` — empty data | Saving when `data.size === 0` |
-| `saveSync()` | Entirely untested (all paths) |
-| `static loadSync()` | Entirely untested (all paths) |
-| `static load()` — JSON | Loading from `.json` files |
-| `static load()` — ignore_not_found | `ENOENT` handling with `ignore_not_found` flag |
-| `static load()` — validation | Invalid name (punctuation, slashes) error paths |
-| `static setDirty()` | Static utility method entirely untested |
-| `dirty` setter — array | Setting dirty to an array value |
-| `dirty` setter — invalid | Error on invalid parameter |
+| `save()` — auto path | Save without explicit filename (uses `osConfigPath` + `mkdir`), environment-dependent |
+| `doesConfigPathExist()` | Empty stub — no implementation to test beyond confirming it returns `undefined` |
 
 ---
 
@@ -170,15 +187,11 @@ All code paths in json.js are fully covered.
 
 ---
 
-## Highest-Priority Remaining Gaps
+## Remaining Gaps
 
-1. **`saveSync()` and `loadSync()` are entirely untested** in the Mocha suite despite being public API methods added in v0.3.0.
+1. **`save()` auto-path** (without explicit filename) is untested because it requires `osConfigPath` to `mkdir`, which is environment-dependent.
 
-2. **Dotted/nested key operations** (`set("a.b.c", val)`, `get("a.b.c")`, `delete("a.b.c")`) are core features with no test coverage.
-
-3. **Error/edge-case paths** in MyConfig (`constructor` validation, `save`/`load` with bad extensions, `delete` on missing keys) are not exercised.
-
-4. **`doesConfigPathExist()`** is declared but empty — no implementation and no tests.
+2. **`doesConfigPathExist()`** is declared but empty — no implementation and no tests beyond confirming the stub.
 
 ---
 
