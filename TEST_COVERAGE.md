@@ -7,10 +7,10 @@ Generated: 2026-02-19
 | Module | Methods/Functions | Tested | Untested | Coverage |
 |--------|------------------:|-------:|---------:|---------:|
 | index.js (MyConfig) | 12 | 7 | 5 | ~58% |
-| ini.js (Ini) | 7 | 5 | 2 | ~71% |
+| ini.js (Ini) | 7 | 7 | 0 | ~100% |
 | json.js (Json) | 2 | 2 | 0 | 100% |
 | util.js (Util) | 25 | 25 | 0 | 100% |
-| **Overall** | **46** | **39** | **7** | **~85%** |
+| **Overall** | **46** | **41** | **5** | **~89%** |
 
 ## Test Infrastructure
 
@@ -70,28 +70,30 @@ Generated: 2026-02-19
 
 ## Module: ini.js (Ini class + helpers)
 
-**Test file:** `test/05_ini.js` (25 tests)
+**Test file:** `test/05_ini.js` (39 tests)
 
 ### Covered
 
 | Function | What's Tested |
 |----------|---------------|
-| `Ini.encode()` | Simple map, whitespace option, alignment, nested sections, arrays, bracketedArray=false, special characters, sort, invalid input error |
-| `Ini.decode()` | Simple string, sections, nested/deep sections, bracket arrays, duplicate-key arrays, comments, empty lines, type conversion, quoted values, escaped chars, equals in keys, invalid input, empty input |
-| Round-trip | Encode then decode preserves data for complex nested structures |
-| `strToType()` | Indirectly via decode type conversion tests (null, true, false) |
-| `safe()` / `unsafe()` | Indirectly via encode/decode special character and quoting tests |
+| `Ini.encode()` | Simple map, whitespace option, alignment, nested sections, arrays, bracketedArray=false, special characters, sort, invalid input error, `newline` option (double eol after section header), `section` option (direct), `platform` option (win32 CRLF vs LF), null values (skipped by `mapToObject`), boolean values, empty map, section ordering (top-level keys before sections), alignment with mixed arrays/sections, `[bracket]` value quoting, leading/trailing whitespace quoting |
+| `Ini.decode()` | Simple string, sections, nested/deep sections, bracket arrays, duplicate-key arrays, comments, empty lines, type conversion, quoted values, escaped chars, equals in keys, invalid input (number, null, undefined), empty input, key without value (→ `true`), pre-existing Map merging, CRLF line endings, inline comments (`;` and `#` truncation), whitespace trimming around keys/values, multiple sections, top-level keys alongside sections, bracketed arrays within sections, escaped backslash (`\\` → `\`), trailing backslash |
+| `splitSections()` | Exercised via encode: multi-word nested section keys produce space-separated headers; round-trip nested sections through encode/decode |
+| Round-trip | Complex nested structures, boolean values, special characters (semicolons, hashes), platform-specific line endings (win32 CRLF) |
+| `strToType()` | Indirectly via decode type conversion tests (null, true, false) and boolean round-trip |
+| `safe()` / `unsafe()` | Indirectly via encode/decode: special characters, `[bracket]` quoting, whitespace quoting, backslash escaping, inline comment truncation, trailing backslash |
+
+### Known Behaviors Found During Testing
+
+| Behavior | Description |
+|----------|-------------|
+| `Ini.encode()` — null values | Null values in a Map are silently skipped because `Util.mapToObject()` excludes types not in its switch cases (boolean, number, string, symbol, array, map). Null round-trips are not supported. |
 
 ### Not Covered
 
 | Function / Path | Gap |
 |-----------------|-----|
-| `Ini.encode()` — `newline` option | Section header followed by double newline |
-| `Ini.encode()` — `section` option (direct) | Passing section as a direct option |
-| `Ini.encode()` — `platform` option | Explicit platform override (e.g. win32 CRLF) |
-| `splitSections()` | Only indirectly exercised; no test for escaped backslash-separator edge cases |
-| `Ini.decode()` — key without value | Line matching `key` with no `=` (should yield `true`) |
-| `Ini.decode()` — pre-existing Map | Passing an existing Map as second argument for merging |
+| `splitSections()` — escaped separator | Direct test for backslash-escaped space separators in section names (only indirectly exercised via encode) |
 
 ---
 
