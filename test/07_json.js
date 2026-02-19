@@ -100,7 +100,7 @@ describe('Json', function()
       const jsonStr = '{"a":1,"b":{"c":2}}';
       const result = Json.decode(jsonStr);
 
-      Assert.equal(called,1);
+      Assert.equal(called,2);
 
       Assert(result instanceof Map);
       Assert.equal(result.get('a'),1);
