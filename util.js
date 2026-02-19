@@ -398,7 +398,7 @@ class Util
     dir = dir.join(S3_Sep);
 
     // success
-    debug(ld,'→',dir);
+    debug(fx,'→',dir);
     return dir;
   }
 
