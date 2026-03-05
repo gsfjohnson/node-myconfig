@@ -55,6 +55,26 @@ function syncExample() {
 }
 ```
 
+## INI Format
+
+Section headers use space-separated names for nesting:
+
+```ini
+[server]
+host=localhost
+
+[server tls]
+cert=/path/to/cert.pem
+```
+
+This produces a nested structure: `server.tls.cert = "/path/to/cert.pem"`.
+
+**Key rules:**
+- Spaces are **not** allowed in key names, only in values
+- Section names use spaces as nesting delimiters
+- Comments start with `;` or `#`
+- Special characters in values (`;`, `#`) are escaped with `\`
+
 ## API Reference
 
 ### Constructor

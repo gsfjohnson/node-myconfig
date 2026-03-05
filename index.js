@@ -94,13 +94,11 @@ class MyConfig
     while ( keys.length > 1 )
     {
       const k = keys.shift();
-      debug(fx,`selecting: ${k}`);
 
       // create object if...
       v = data.get(k);
       if ( keys.length > 0 && !Util.isMap(v) )
       {
-        debug(fx,'new key:',k);
         v = new Map();
         data.set(k,v);
         data = v;
@@ -113,7 +111,6 @@ class MyConfig
 
     // update
     const k = keys.shift();
-    debug(fx,`selecting: ${k}`);
     debug(fx,`setting: ${key} ← ${val}`);
     data.set(k,val);
     this.dirty = key;
@@ -153,7 +150,6 @@ class MyConfig
     while ( keys.length )
     {
       let k = keys.shift();
-      debug(fx,'selecting:',k);
       data = data.get(k);
       if (!Util.isMap(data)) break;
     }
@@ -198,7 +194,6 @@ class MyConfig
     while ( keys.length > 1 )
     {
       const k = keys.shift();
-      debug(fx,`selecting: ${k}`);
 
       data = data.get(k);
 
@@ -411,9 +406,8 @@ class MyConfig
     let str;
     try {
       const params = { encoding: 'utf8' };
-      debug(fx,'readFile() <--',path,params);
+      debug(fx,'readFile() <--',path);
       str = await NodeFs.promises.readFile(path,params);
-      debug(fx,'readFile() -->',str);
     }
     catch (e) {
       debug(fx,'caught:',e);
@@ -488,9 +482,8 @@ class MyConfig
     let str;
     try {
       const params = { encoding: 'utf8' };
-      debug(fx,'readFileSync() <--',path,params)
+      debug(fx,'readFileSync() <--',path);
       str = NodeFs.readFileSync(path,params);
-      debug(fx,'readFileSync() -->',str);
     }
     catch (e) {
       debug(fx,'caught:',e);
@@ -544,10 +537,8 @@ class MyConfig
    */
   get dirty()
   {
-    const fx = '.dirty';
     const sd = this.#sd;
     let out = sd.dirty.length;
-    if ( MyConfig.pd ) debug(fx,'→',out);
     return out;
   }
 

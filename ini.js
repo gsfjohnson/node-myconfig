@@ -99,12 +99,10 @@ function unsafe(val)
 
 function strToType(val)
 {
-  const ld = { fx: 'strToType()' };
   let out = val;
   if ( val === 'null' ) out = null;
   if ( val === 'true' ) out = true;
   if ( val === 'false' ) out = false;
-  debug(ld.fx,val,'→',out);
   return out;
 }
 
@@ -114,7 +112,7 @@ class Ini
   static encode(...options)
   {
     const ld = { fx: '.encode()' };
-    debug(ld.fx,'←',...options);
+    debug(ld.fx,'←');
 
     // parse options
     let map, obj, opts = {};
@@ -184,7 +182,7 @@ class Ini
     }
   
     if (opts.section && out.length) {
-      out = '[' + safe(opts.section) + ']' + (opts.newline ? eol + eol : eol) + out
+      out = '[' + opts.section + ']' + (opts.newline ? eol + eol : eol) + out
     }
   
     for (const k of children) {
@@ -201,14 +199,12 @@ class Ini
       out += child
     }
   
-    debug(ld.fx,'→',out);
     return out
   }
-  
+
   static decode(...options)
   {
     const ld = { fx: '.decode()' };
-    debug(ld.fx,'←',...options);
 
     let str, out, opts = {}
 
@@ -301,7 +297,6 @@ class Ini
       else p.set(key,value);
     }
 
-    debug(ld.fx,'→',out);
     return out;
   }
 

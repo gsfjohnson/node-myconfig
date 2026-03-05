@@ -148,20 +148,17 @@ class Util
    */
   static objectToMap(obj,map)
   {
-    const fx = '.objectToMap()';
-
     if (!Util.isObject(obj) || obj === null) throw new TypeError('Input must be an object');
-    
+
     if (!map) map = new Map();
-    
+
     Object.entries(obj).forEach(([key, value]) =>
     {
       if (Util.isPureObject(value))
         value = Util.objectToMap(value);
       map.set(key, value);
     });
-    
-    debug(fx,'→',map);
+
     return map;
   }
 
@@ -172,13 +169,10 @@ class Util
    */
   static mapToObject(map)
   {
-    const fx = '.mapToObject()';
-    debug(fx,'←',map);
-
     if (!Util.isMap(map)) throw new TypeError('invalid parameter: must be a Map');
-    
+
     const obj = {};
-    
+
     map.forEach( (value, key) => {
       switch ( Util.typeof(value) ) {
         case 'boolean':
@@ -200,16 +194,12 @@ class Util
       //  obj[key] = value;
       //}
     });
-    
-    debug(fx,'→',obj);
+
     return obj;
   }
 
   static deepCloneMap(originalMap)
   {
-    const fx = '.deepCloneMap()';
-    debug(fx,'←',originalMap);
-
     // Create a new Map to hold the cloned key-value pairs
     const clonedMap = new Map();
     
@@ -240,8 +230,7 @@ class Util
       // Add the cloned key-value pair to the new Map
       clonedMap.set(key, clonedValue);
     }
-    
-    debug(fx,'→',clonedMap);
+
     return clonedMap;
   }
 
@@ -253,9 +242,6 @@ class Util
   **/
   static deepCloneObject(obj)
   {
-    const fx = '.deepCloneObject()';
-    debug(fx,'←',obj);
-
     if (obj === null || typeof obj !== 'object') return obj;
     
     // Handle special object types
@@ -273,16 +259,12 @@ class Util
         clone[key] = Util.deepCloneObject(obj[key]);
       }
     }
-    
-    debug(fx,'→',clone);
+
     return clone;
   }
 
   static typeof(val)
   {
-    const fx = '.typeof()';
-    debug(fx,'←',val);
-
     let out = typeof val;
     //if ( val === undefined ) return 'undefined';
     if ( val === null ) out = 'null';
@@ -292,7 +274,6 @@ class Util
       else if ( Array.isArray(val) ) out = 'array';
       else out = 'object';
     }
-    debug(fx,'→',out);
     return out;
   }
 

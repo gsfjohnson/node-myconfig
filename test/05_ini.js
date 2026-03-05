@@ -401,8 +401,8 @@ describe('Ini', function()
         ])]
       ]);
       const result = Ini.encode(map);
-      // nested sections get space-separated headers; safe() quotes names with spaces
-      Assert(result.includes('["parent child"]'));
+      // nested sections get space-separated headers
+      Assert(result.includes('[parent child]'));
       Assert(result.includes('key=val'));
     });
 
