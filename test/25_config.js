@@ -1,15 +1,22 @@
 
 const NodePath = require('path');
 const NodeOs = require('os');
+const NodeFs = require('fs');
 const Assert = require('assert');
 
 const MyConfig = require('../index');
+const Util = require('../util');
 
 
 describe('MyConfig', function()
 {
   let cfg;
-  let cfg_fn = NodePath.join( NodeOs.tmpdir(), 'myconfig_rw_test.ini' );
+  const testappConfigDir = Util.osConfigPath('testapp');
+  let cfg_fn = NodePath.join( testappConfigDir, 'myconfig_rw_test.ini' );
+
+  before(() => {
+    NodeFs.mkdirSync(testappConfigDir, { recursive: true });
+  });
 
   describe('initial', () =>
   {

@@ -8,6 +8,8 @@ const MyConfig = require('../index');
 const Util = require('../util');
 
 const tmpdir = NodeOs.tmpdir();
+const appConfigDir = Util.osConfigPath('app');
+const testappConfigDir = Util.osConfigPath('testapp');
 
 describe('MyConfig (comprehensive)', function()
 {
@@ -396,9 +398,13 @@ describe('MyConfig (comprehensive)', function()
 
   describe('save', () =>
   {
-    const iniFile = NodePath.join(tmpdir, 'myconfig_test_save.ini');
-    const jsonFile = NodePath.join(tmpdir, 'myconfig_test_save.json');
-    const badFile = NodePath.join(tmpdir, 'myconfig_test_save.yaml');
+    const iniFile = NodePath.join(appConfigDir, 'myconfig_test_save.ini');
+    const jsonFile = NodePath.join(appConfigDir, 'myconfig_test_save.json');
+    const badFile = NodePath.join(appConfigDir, 'myconfig_test_save.yaml');
+
+    before(() => {
+      NodeFs.mkdirSync(appConfigDir, { recursive: true });
+    });
 
     afterEach(() => {
       try { NodeFs.unlinkSync(iniFile); } catch(e) {}
@@ -470,9 +476,13 @@ describe('MyConfig (comprehensive)', function()
 
   describe('saveSync', () =>
   {
-    const iniFile = NodePath.join(tmpdir, 'myconfig_test_saveSync.ini');
-    const jsonFile = NodePath.join(tmpdir, 'myconfig_test_saveSync.json');
-    const badFile = NodePath.join(tmpdir, 'myconfig_test_saveSync.yaml');
+    const iniFile = NodePath.join(appConfigDir, 'myconfig_test_saveSync.ini');
+    const jsonFile = NodePath.join(appConfigDir, 'myconfig_test_saveSync.json');
+    const badFile = NodePath.join(appConfigDir, 'myconfig_test_saveSync.yaml');
+
+    before(() => {
+      NodeFs.mkdirSync(appConfigDir, { recursive: true });
+    });
 
     afterEach(() => {
       try { NodeFs.unlinkSync(iniFile); } catch(e) {}
@@ -542,10 +552,11 @@ describe('MyConfig (comprehensive)', function()
 
   describe('static load', () =>
   {
-    const iniFile = NodePath.join(tmpdir, 'myconfig_test_load.ini');
-    const jsonFile = NodePath.join(tmpdir, 'myconfig_test_load.json');
+    const iniFile = NodePath.join(testappConfigDir, 'myconfig_test_load.ini');
+    const jsonFile = NodePath.join(testappConfigDir, 'myconfig_test_load.json');
 
     before(() => {
+      NodeFs.mkdirSync(testappConfigDir, { recursive: true });
       NodeFs.writeFileSync(iniFile, 'greeting=hello\nanswer=42\n', 'utf8');
       NodeFs.writeFileSync(jsonFile, '{"greeting":"hello","answer":"42"}', 'utf8');
     });
@@ -589,7 +600,7 @@ describe('MyConfig (comprehensive)', function()
 
     it('load with ignore_not_found=true on missing file --> empty config', async function()
     {
-      const missing = NodePath.join(tmpdir, 'nonexistent_test.ini');
+      const missing = NodePath.join(testappConfigDir, 'nonexistent_test.ini');
       const cfg = await MyConfig.load('testapp', missing, true);
       Assert.strictEqual(cfg instanceof MyConfig, true);
       Assert.strictEqual(cfg.data.size, 0);
@@ -597,7 +608,7 @@ describe('MyConfig (comprehensive)', function()
 
     it('load without ignore_not_found throws on missing file', async function()
     {
-      const missing = NodePath.join(tmpdir, 'nonexistent_test.ini');
+      const missing = NodePath.join(testappConfigDir, 'nonexistent_test.ini');
       await Assert.rejects(() => MyConfig.load('testapp', missing), { code: 'ENOENT' });
     });
 
@@ -631,10 +642,11 @@ describe('MyConfig (comprehensive)', function()
 
   describe('static loadSync', () =>
   {
-    const iniFile = NodePath.join(tmpdir, 'myconfig_test_loadSync.ini');
-    const jsonFile = NodePath.join(tmpdir, 'myconfig_test_loadSync.json');
+    const iniFile = NodePath.join(testappConfigDir, 'myconfig_test_loadSync.ini');
+    const jsonFile = NodePath.join(testappConfigDir, 'myconfig_test_loadSync.json');
 
     before(() => {
+      NodeFs.mkdirSync(testappConfigDir, { recursive: true });
       NodeFs.writeFileSync(iniFile, 'color=red\nsize=large\n', 'utf8');
       NodeFs.writeFileSync(jsonFile, '{"color":"red","size":"large"}', 'utf8');
     });
@@ -678,7 +690,7 @@ describe('MyConfig (comprehensive)', function()
 
     it('loadSync with ignore_not_found=true on missing file --> empty config', function()
     {
-      const missing = NodePath.join(tmpdir, 'nonexistent_sync_test.ini');
+      const missing = NodePath.join(testappConfigDir, 'nonexistent_sync_test.ini');
       const cfg = MyConfig.loadSync('testapp', missing, true);
       Assert.strictEqual(cfg instanceof MyConfig, true);
       Assert.strictEqual(cfg.data.size, 0);
@@ -686,7 +698,7 @@ describe('MyConfig (comprehensive)', function()
 
     it('loadSync without ignore_not_found throws on missing file', function()
     {
-      const missing = NodePath.join(tmpdir, 'nonexistent_sync_test.ini');
+      const missing = NodePath.join(testappConfigDir, 'nonexistent_sync_test.ini');
       Assert.throws(() => MyConfig.loadSync('testapp', missing), { code: 'ENOENT' });
     });
 
@@ -720,8 +732,12 @@ describe('MyConfig (comprehensive)', function()
 
   describe('round-trip', () =>
   {
-    const iniFile = NodePath.join(tmpdir, 'myconfig_test_roundtrip.ini');
-    const jsonFile = NodePath.join(tmpdir, 'myconfig_test_roundtrip.json');
+    const iniFile = NodePath.join(appConfigDir, 'myconfig_test_roundtrip.ini');
+    const jsonFile = NodePath.join(appConfigDir, 'myconfig_test_roundtrip.json');
+
+    before(() => {
+      NodeFs.mkdirSync(appConfigDir, { recursive: true });
+    });
 
     afterEach(() => {
       try { NodeFs.unlinkSync(iniFile); } catch(e) {}
@@ -823,6 +839,89 @@ describe('MyConfig (comprehensive)', function()
     it('MyConfig.pd defaults to true', function()
     {
       Assert.strictEqual(MyConfig.pd, true);
+    });
+  });
+
+  // ── path traversal prevention ───────────────────────────────────
+
+  describe('path traversal prevention', () =>
+  {
+    it('save() throws on absolute path outside config dir', async function()
+    {
+      const cfg = new MyConfig('app');
+      cfg.set('k', 'v');
+      const evil = NodePath.join(tmpdir, 'evil.ini');
+      await Assert.rejects(() => cfg.save(evil), { message: /path outside config directory/ });
+    });
+
+    it('saveSync() throws on absolute path outside config dir', function()
+    {
+      const cfg = new MyConfig('app');
+      cfg.set('k', 'v');
+      const evil = NodePath.join(tmpdir, 'evil.ini');
+      Assert.throws(() => cfg.saveSync(evil), { message: /path outside config directory/ });
+    });
+
+    it('save() throws on relative path traversal', async function()
+    {
+      const cfg = new MyConfig('app');
+      cfg.set('k', 'v');
+      await Assert.rejects(() => cfg.save('../../evil.ini'), { message: /path outside config directory/ });
+    });
+
+    it('saveSync() throws on relative path traversal', function()
+    {
+      const cfg = new MyConfig('app');
+      cfg.set('k', 'v');
+      Assert.throws(() => cfg.saveSync('../../evil.ini'), { message: /path outside config directory/ });
+    });
+
+    it('save() throws on system file path (e.g. /etc/cron.d/malicious.ini)', async function()
+    {
+      const cfg = new MyConfig('app');
+      cfg.set('k', 'v');
+      const sysPath = process.platform === 'win32'
+        ? 'C:\\Windows\\Temp\\malicious.ini'
+        : '/etc/cron.d/malicious.ini';
+      await Assert.rejects(() => cfg.save(sysPath), { message: /path outside config directory/ });
+    });
+
+    it('saveSync() throws on system file path', function()
+    {
+      const cfg = new MyConfig('app');
+      cfg.set('k', 'v');
+      const sysPath = process.platform === 'win32'
+        ? 'C:\\Windows\\Temp\\malicious.ini'
+        : '/etc/cron.d/malicious.ini';
+      Assert.throws(() => cfg.saveSync(sysPath), { message: /path outside config directory/ });
+    });
+
+    it('load() throws on absolute path outside config dir', async function()
+    {
+      const evil = NodePath.join(tmpdir, 'evil.ini');
+      await Assert.rejects(() => MyConfig.load('testapp', evil), { message: /path outside config directory/ });
+    });
+
+    it('loadSync() throws on absolute path outside config dir', function()
+    {
+      const evil = NodePath.join(tmpdir, 'evil.ini');
+      Assert.throws(() => MyConfig.loadSync('testapp', evil), { message: /path outside config directory/ });
+    });
+
+    it('load() throws on system file path (e.g. /etc/shadow)', async function()
+    {
+      const sysPath = process.platform === 'win32'
+        ? 'C:\\Windows\\System32\\config\\system.ini'
+        : '/etc/shadow.ini';
+      await Assert.rejects(() => MyConfig.load('testapp', sysPath), { message: /path outside config directory/ });
+    });
+
+    it('loadSync() throws on system file path', function()
+    {
+      const sysPath = process.platform === 'win32'
+        ? 'C:\\Windows\\System32\\config\\system.ini'
+        : '/etc/shadow.ini';
+      Assert.throws(() => MyConfig.loadSync('testapp', sysPath), { message: /path outside config directory/ });
     });
   });
 

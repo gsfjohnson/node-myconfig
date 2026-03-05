@@ -286,6 +286,9 @@ class MyConfig
       debug(fx,'fn:',fn);
     }
 
+    // sanity: path
+    MyConfig._assertPathInConfigDir(fn, this.name);
+
     // sanity: ext
     let str, ext = NodePath.extname(fn);
     if ( ext != '.ini' && ext != '.json' )
@@ -328,6 +331,9 @@ class MyConfig
       fn = NodePath.join(path,MyConfig.config_fn);
       debug(fx,'fn:',fn);
     }
+
+    // sanity: path
+    MyConfig._assertPathInConfigDir(fn, this.name);
 
     // sanity: ext
     let ext = NodePath.extname(fn);
@@ -390,6 +396,9 @@ class MyConfig
     if (!['.ini','.json'].includes(ext)) throw new Error(`only ini/json supported: ${fn}`);
     if (!path && dir && fn) path = NodePath.join(dir,fn);
     if (!path) throw new Error('failed to build path');
+
+    // sanity: path
+    MyConfig._assertPathInConfigDir(path, opts.name);
 
     // catch thrown errors
     let str;
@@ -464,6 +473,9 @@ class MyConfig
     if (!['.ini','.json'].includes(ext)) throw new Error(`only ini/json supported: ${fn}`);
     if (!path && dir && fn) path = NodePath.join(dir,fn);
     if (!path) throw new Error('failed to build path');
+
+    // sanity: path
+    MyConfig._assertPathInConfigDir(path, opts.name);
 
     // catch thrown errors
     let str;
@@ -544,6 +556,16 @@ class MyConfig
     if ( ! Array.isArray(arr) ) return;
     if ( arr.includes(key) ) return;
     arr.push(key);
+  }
+
+  static _assertPathInConfigDir(fn, name)
+  {
+    const resolved = NodePath.resolve(fn);
+    const configDir = Util.osConfigPath(name);
+    const normalizedDir = configDir.endsWith(NodePath.sep)
+      ? configDir : configDir + NodePath.sep;
+    if (!resolved.startsWith(normalizedDir) && resolved !== configDir)
+      throw new Error('path outside config directory: ' + resolved);
   }
 
   /*[NodeUtil.inspect.custom](depth, options)
