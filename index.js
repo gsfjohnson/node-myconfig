@@ -22,11 +22,10 @@ class MyConfig
 
   /**
    * Create a MyConfig object.
-   * @param {String} name - Lowercase name of app. Used for config path generation.
-   * @param {Map} [data] - Initial map containing config data.
-   * @param {Object} [opts] - Options (e.g. name, data).
-   * @return {MyConfig} myconfigInstance
-  **/
+   * @param {...(String|Map|Object)} options - A string sets the app name, a Map provides initial data, an Object provides options (name, dir, data).
+   * @throws {TypeError} If an option is not a string, Map, or plain object.
+   * @throws {Error} If name is not provided or not a string.
+   */
   constructor(...options)
   {
     const fx = '.constructor()';
@@ -67,6 +66,13 @@ class MyConfig
     debug(fx,'→',this);
   }
 
+  /**
+   * Set a value by key. Supports dotted key paths (e.g. 'a.b.c') to set nested values.
+   * @param {String} key - The key or dotted key path.
+   * @param {*} val - The value to set.
+   * @returns {Boolean} True on success.
+   * @throws {Error} If key is not a string.
+   */
   set(key,val)
   {
     const fx = '.set()';
@@ -118,6 +124,13 @@ class MyConfig
     return out;
   }
 
+  /**
+   * Get a value by key. Supports dotted key paths (e.g. 'a.b.c') to retrieve nested values.
+   * Returns a deep clone of Map values. Returns undefined if the full path cannot be resolved.
+   * @param {String} key - The key or dotted key path.
+   * @returns {*} The value, or undefined if not found.
+   * @throws {Error} If key is not a string or internal data is not a Map.
+   */
   get(key)
   {
     const fx = '.get()';
@@ -157,6 +170,12 @@ class MyConfig
     return out;
   }
 
+  /**
+   * Delete a value by key. Supports dotted key paths (e.g. 'a.b.c') to delete nested values.
+   * @param {String} key - The key or dotted key path to delete.
+   * @returns {Boolean} True if the key was found and deleted, false otherwise.
+   * @throws {Error} If key is not a string.
+   */
   delete(key)
   {
     const fx = '.delete()';
@@ -234,11 +253,23 @@ class MyConfig
     return out;
   }*/
 
+  /**
+   * Check whether the OS config directory exists for the given app name.
+   * @param {String} appname - The application name to check.
+   * @returns {Promise<Boolean>} True if the config path exists.
+   */
   async doesConfigPathExist(appname)
   {
 
   }
 
+  /**
+   * Asynchronously save config data to a file. Supports INI and JSON formats.
+   * If no path is given, saves to the default OS config path using the app name.
+   * @param {String} [fn] - File path to save to. Defaults to OS config path with config.ini.
+   * @returns {Promise<Boolean>} True on success.
+   * @throws {Error} If the file extension is not .ini or .json.
+   */
   async save(fn)
   {
     const fx = '.save()';
@@ -275,6 +306,13 @@ class MyConfig
     return out;
   }
 
+  /**
+   * Synchronously save config data to a file. Supports INI and JSON formats.
+   * If no path is given, saves to the default OS config path using the app name.
+   * @param {String} [fn] - File path to save to. Defaults to OS config path with config.ini.
+   * @returns {Boolean} True on success.
+   * @throws {Error} If the file extension is not .ini or .json.
+   */
   saveSync(fn)
   {
     const fx = '.saveSync()';
@@ -312,6 +350,14 @@ class MyConfig
     return out;
   }
 
+  /**
+   * Asynchronously load config from a file and return a new MyConfig instance.
+   * Supports INI and JSON formats. If a file path with extension is provided, it is used directly;
+   * otherwise the default OS config path is resolved from the app name.
+   * @param {...(String|Object|Boolean)} options - A string with an .ini/.json extension sets the file path; a plain string sets the app name; an Object provides options (name, ignore_not_found); a Boolean sets ignore_not_found.
+   * @returns {Promise<MyConfig>} A new MyConfig instance populated with the loaded data.
+   * @throws {Error} If name is invalid, file extension is unsupported, or the file cannot be read.
+   */
   static async load(...options)
   {
     const fx = '.load()';
@@ -378,6 +424,14 @@ class MyConfig
     return cfg;
   }
 
+  /**
+   * Synchronously load config from a file and return a new MyConfig instance.
+   * Supports INI and JSON formats. If a file path with extension is provided, it is used directly;
+   * otherwise the default OS config path is resolved from the app name.
+   * @param {...(String|Object|Boolean)} options - A string with an .ini/.json extension sets the file path; a plain string sets the app name; an Object provides options (name, ignore_not_found); a Boolean sets ignore_not_found.
+   * @returns {MyConfig} A new MyConfig instance populated with the loaded data.
+   * @throws {Error} If name is invalid, file extension is unsupported, or the file cannot be read.
+   */
   static loadSync(...options)
   {
     const fx = '.loadSync()';
@@ -444,6 +498,11 @@ class MyConfig
     return cfg;
   }
 
+  /**
+   * Set the dirty state. Pass null/falsy to clear, a string key to append, or an array to replace.
+   * @param {String|Array|null} val - The dirty key(s) or null to clear.
+   * @throws {Error} If val is not a string, array, or falsy.
+   */
   set dirty(val)
   {
     const fx = '.dirty';
@@ -460,6 +519,10 @@ class MyConfig
     else throw new Error('invalid parameter: '+val);
   }
 
+  /**
+   * Get the number of dirty (unsaved) keys.
+   * @returns {Number} The count of dirty keys.
+   */
   get dirty()
   {
     const fx = '.dirty';
@@ -469,6 +532,11 @@ class MyConfig
     return out;
   }
 
+  /**
+   * Add a key to a dirty-tracking array if not already present.
+   * @param {Array} arr - The dirty-tracking array.
+   * @param {String} key - The key to mark as dirty.
+   */
   static setDirty(arr,key)
   {
     const fx = '.setDirty()';
