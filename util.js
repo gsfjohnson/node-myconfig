@@ -221,7 +221,7 @@ class Util
       else if (value instanceof Map) clonedValue = Util.deepCloneMap(value);
       else if (value instanceof Set) {
         clonedValue = new Set([...value].map(item => 
-          item instanceof Object ? deepCloneObject(item) : item
+          item instanceof Object ? Util.deepCloneObject(item) : item
         ));
       }
       else if (Array.isArray(value)) {
@@ -362,7 +362,7 @@ class Util
         let r = n % 8, q = (n-r)/8, i;
         for (i = 0; i < q; i++)
           rs += Math.random().toString(16).slice(2);
-        if (r > 0) rs += Math.random().toString(16).slice(2,i);
+        if (r > 0) rs += Math.random().toString(16).slice(2,2+r);
     }
     return rs;
   }

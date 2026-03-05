@@ -819,11 +819,11 @@ describe('MyConfig (comprehensive)', function()
       Assert.strictEqual(typeof cfg.doesConfigPathExist, 'function');
     });
 
-    it('returns undefined (empty stub)', async function()
+    it('returns a boolean', async function()
     {
       const cfg = new MyConfig('app');
       const result = await cfg.doesConfigPathExist('app');
-      Assert.strictEqual(result, undefined);
+      Assert.strictEqual(typeof result, 'boolean');
     });
   });
 

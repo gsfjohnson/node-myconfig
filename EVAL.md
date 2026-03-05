@@ -4,7 +4,7 @@ A Map-based configuration library supporting INI/JSON formats with dot-notation 
 
 ## Security Issues
 
-### 1. Path Traversal in `load()`/`loadSync()` — HIGH
+### ~~1. Path Traversal in `load()`/`loadSync()` — HIGH~~
 
 `index.js:325-338` — The `name` validation rejects `.`, `/`, `\\` but the `path` argument (line 326) is accepted with no sanitization. An attacker-controlled path can read arbitrary files:
 
@@ -14,7 +14,7 @@ MyConfig.load('app', '/etc/shadow')  // reads any file on disk
 
 The path is used directly in `readFile()` at line 353. No check that it stays within an expected config directory.
 
-### 2. Path Traversal in `save()`/`saveSync()` — HIGH
+### ~~2. Path Traversal in `save()`/`saveSync()` — HIGH~~
 
 `index.js:242-269` — The `fn` parameter is written to directly with `writeFile()` with no path validation. Arbitrary file overwrite is possible:
 
@@ -44,19 +44,19 @@ Debug statements throughout (`index.js:33`, `index.js:111`, `util.js:354`) log r
 
 ## Bugs
 
-### 1. `deepCloneMap()` — Missing `Util.` prefix
+### ~~1. `deepCloneMap()` — Missing `Util.` prefix~~
 
 `util.js:224` — `deepCloneObject(item)` should be `Util.deepCloneObject(item)`. This will throw a `ReferenceError` when cloning a Map that contains a Set with object values.
 
-### 2. `rand_string()` fallback remainder logic
+### ~~2. `rand_string()` fallback remainder logic~~
 
 `util.js:365` — `Math.random().toString(16).slice(2,i)` uses the loop variable `i` which equals `q` (the quotient), not a value related to the remainder `r`. Should be `.slice(2, 2+r)`.
 
-### 3. `doesConfigPathExist()` is an empty stub
+### ~~3. `doesConfigPathExist()` is an empty stub~~
 
 `index.js:237-240` — Exported as a public method but does nothing.
 
-### 4. `dirty` getter/setter inconsistency
+### ~~4. `dirty` getter/setter inconsistency~~
 
 `index.js:467` — The setter allows assigning a raw array (`else if (Array.isArray(val)) sd.dirty = val`), but also resets on any falsy value. `dirty = 0` (a number, falsy) resets the array, which is a surprising side-effect.
 

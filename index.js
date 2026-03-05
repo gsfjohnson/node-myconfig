@@ -260,7 +260,14 @@ class MyConfig
    */
   async doesConfigPathExist(appname)
   {
-
+    const name = appname || this.name;
+    const dir = Util.osConfigPath(name);
+    try {
+      await NodeFs.promises.access(dir);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   /**
@@ -519,7 +526,7 @@ class MyConfig
   {
     const fx = '.dirty';
     const sd = this.#sd;
-    if ( ! val ) {
+    if ( val === null || val === undefined ) {
       sd.dirty = [];
       if ( MyConfig.pd ) debug(fx,'←',val);
     }
