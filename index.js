@@ -5,7 +5,15 @@ const NodeFs = require('node:fs');
 
 //const JsonQuery = require('json-query');
 
-const Util = require('./util');
+const {
+  isObject,
+  isMap,
+  isString,
+  rand_string,
+  deepCloneMap,
+  osConfigPath,
+  isBoolean,
+} = require('./util');
 const Ini = require('./ini');
 const Json = require('./json');
 
@@ -33,7 +41,7 @@ class MyConfig
 
     // initial
     const opts = Object.create(null);
-    this.id = 'mycfg_'+Util.rand_string(2);
+    this.id = 'mycfg_'+rand_string(2);
     this.data = new Map();
     const sd = this.#sd = {
       dirty: [],
@@ -43,18 +51,18 @@ class MyConfig
     // process options
     options.forEach( (opt) =>
     {
-      if (Util.isMap(opt)) opts.data = opt;
-      else if (Util.isString(opt)) opts.name = opt;
-      else if (Util.isObject(opt)) Object.assign(opts,opt);
+      if (isMap(opt)) opts.data = opt;
+      else if (isString(opt)) opts.name = opt;
+      else if (isObject(opt)) Object.assign(opts,opt);
       else throw TypeError('invalid opt: '+ opt +'('+typeof opt+')');
     });
 
     // sanity
-    if (!Util.isString(opts.name)) throw new Error('invalid name: must be string');
+    if (!isString(opts.name)) throw new Error('invalid name: must be string');
     this.name = opts.name;
-    if (Util.isString(opts.dir)) this.dir = opts.dir;
-    if (Util.isMap(opts.data)) {
-      if (opts.data.size) this.data = Util.deepCloneMap(opts.data);
+    if (isString(opts.dir)) this.dir = opts.dir;
+    if (isMap(opts.data)) {
+      if (opts.data.size) this.data = deepCloneMap(opts.data);
       else this.data = opts.data;
     }
 
@@ -84,7 +92,7 @@ class MyConfig
 
     // sanity
     if ( typeof key != 'string' ) throw new Error('invalid key: must be string');
-    if (!Util.isMap(data)) data = this.data = new Map();
+    if (!isMap(data)) data = this.data = new Map();
 
     // split key
     const keys = [];
@@ -97,7 +105,7 @@ class MyConfig
 
       // create object if...
       v = data.get(k);
-      if ( keys.length > 0 && !Util.isMap(v) )
+      if ( keys.length > 0 && !isMap(v) )
       {
         v = new Map();
         data.set(k,v);
@@ -138,8 +146,8 @@ class MyConfig
     let data = this.data;
 
     // sanity
-    if (!Util.isString(key)) throw new Error(`invalid parameter: key must be string`);
-    if (!Util.isMap(data)) throw new Error(`internal error: data must be Map`);
+    if (!isString(key)) throw new Error(`invalid parameter: key must be string`);
+    if (!isMap(data)) throw new Error(`internal error: data must be Map`);
 
     // split keys
     let keys = [];
@@ -151,7 +159,7 @@ class MyConfig
     {
       let k = keys.shift();
       data = data.get(k);
-      if (!Util.isMap(data)) break;
+      if (!isMap(data)) break;
     }
     //debug(fx,'data:',data);
 
@@ -159,7 +167,7 @@ class MyConfig
     if (keys.length) data = undefined;
 
     // always deep clone
-    if (Util.isMap(data)) data = Util.deepCloneMap(data);
+    if (isMap(data)) data = deepCloneMap(data);
     out = data;
 
     debug(fx,key,'→',out);
@@ -182,7 +190,7 @@ class MyConfig
     let data = this.data;
 
     // sanity
-    if (!Util.isString(key)) throw new Error(`invalid key: must be string`);
+    if (!isString(key)) throw new Error(`invalid key: must be string`);
     //if ( k.indexOf('.') == -1 )
     //  throw new Error('refusing to delete root key:',k);
 
@@ -198,7 +206,7 @@ class MyConfig
       data = data.get(k);
 
       // continue diving
-      if (!Util.isMap(data)) break;
+      if (!isMap(data)) break;
     }
 
     // when keys remain, diving was unsuccessful
@@ -212,6 +220,7 @@ class MyConfig
       const k = keys.shift();
       debug(fx,`deleting: ${k}`);
       success = data.delete(k);
+      if (success) this.dirty = key;
     }
 
     // return
@@ -230,8 +239,8 @@ class MyConfig
     let out;
 
     // sanity
-    if (!Util.isString(q)) throw new Error(`invalid query: ${q}`);
-    if (!Util.isPureObject(data)) throw new Error(`invalid cfg: ${data}`);
+    if (!isString(q)) throw new Error(`invalid query: ${q}`);
+    if (!isPureObject(data)) throw new Error(`invalid cfg: ${data}`);
 
     // query
     const op = 'JsonQuery()';
@@ -240,7 +249,7 @@ class MyConfig
     //debug(fx,op,'result:', result);
     debug(fx,op,'→',result);
 
-    if ( Util.isObject(result) && ('value' in result) && result.value !== null )
+    if ( isObject(result) && ('value' in result) && result.value !== null )
       out = result.value;
 
     // not found or other failure
@@ -256,7 +265,7 @@ class MyConfig
   async doesConfigPathExist(appname)
   {
     const name = appname || this.name;
-    const dir = Util.osConfigPath(name);
+    const dir = osConfigPath(name);
     try {
       await NodeFs.promises.access(dir);
       return true;
@@ -283,7 +292,7 @@ class MyConfig
     // sanity: fn
     if ( ! fn ) {
       const mkdir = true;
-      const path = Util.osConfigPath(this.name,mkdir);
+      const path = osConfigPath(this.name,mkdir);
       fn = NodePath.join(path,MyConfig.config_fn);
       debug(fx,'fn:',fn);
     }
@@ -329,7 +338,7 @@ class MyConfig
     // sanity: fn
     if ( ! fn ) {
       const mkdir = true;
-      const path = Util.osConfigPath(this.name,mkdir);
+      const path = osConfigPath(this.name,mkdir);
       fn = NodePath.join(path,MyConfig.config_fn);
       debug(fx,'fn:',fn);
     }
@@ -375,24 +384,24 @@ class MyConfig
 
     // parse options
     options.forEach( (opt) => {
-      if (Util.isString(opt)) {
+      if (isString(opt)) {
         if (['.ini','.json'].includes(NodePath.extname(opt)))
           path = opt;
         else opts.name = opt;
       }
-      else if (Util.isObject(opt)) Object.assign(opts,opt);
-      else if (Util.isBoolean(opt)) opts.ignore_not_found = opt;
+      else if (isObject(opt)) Object.assign(opts,opt);
+      else if (isBoolean(opt)) opts.ignore_not_found = opt;
       else throw new Error('invalid option: '+ opt);
     });
 
     // sanity
-    if (!Util.isString(opts.name)) throw new Error(`invalid opts.name, must be string: ${opts.name}`);
+    if (!isString(opts.name)) throw new Error(`invalid opts.name, must be string: ${opts.name}`);
     if (opts.name.indexOf('.')>-1) throw new Error('invalid opts.name, punctuation not allowed: '+ opts.name);
     if (opts.name.indexOf('/')>-1) throw new Error('invalid opts.name, slash not allowed: '+ opts.name);
     if (opts.name.indexOf('\\')>-1) throw new Error('invalid opts.name, slash not allowed: '+ opts.name);
     if (path && !fn) fn = NodePath.basename(path);
     if (path && !dir) dir = NodePath.dirname(path);
-    if (!dir) dir = Util.osConfigPath(opts.name); // do not mkdir
+    if (!dir) dir = osConfigPath(opts.name); // do not mkdir
     if (!fn) fn = MyConfig.config_fn;
     if (fn && !ext) ext = NodePath.extname(fn);
     if (!['.ini','.json'].includes(ext)) throw new Error(`only ini/json supported: ${fn}`);
@@ -421,7 +430,7 @@ class MyConfig
       case '.ini': map = Ini.decode(str,map); break;
       case '.json': map = Json.decode(str,map); break;
     }
-    if (!Util.isMap(map)) throw new Error('failed to parse: '+path);
+    if (!isMap(map)) throw new Error('failed to parse: '+path);
 
     // instanciate
     let params = { ...opts };
@@ -451,24 +460,24 @@ class MyConfig
 
     // parse options
     options.forEach( (opt) => {
-      if (Util.isString(opt)) {
+      if (isString(opt)) {
         if (['.ini','.json'].includes(NodePath.extname(opt)))
           path = opt;
         else opts.name = opt;
       }
-      else if (Util.isObject(opt)) Object.assign(opts,opt);
-      else if (Util.isBoolean(opt)) opts.ignore_not_found = opt;
+      else if (isObject(opt)) Object.assign(opts,opt);
+      else if (isBoolean(opt)) opts.ignore_not_found = opt;
       else throw new Error(`invalid option: ${opt}`);
     });
 
     // sanity
-    if (!Util.isString(opts.name)) throw new Error(`invalid opts.name, must be string: ${opts.name}`);
+    if (!isString(opts.name)) throw new Error(`invalid opts.name, must be string: ${opts.name}`);
     if (opts.name.indexOf('.')>-1) throw new Error('invalid opts.name, punctuation not allowed: '+ opts.name);
     if (opts.name.indexOf('/')>-1) throw new Error('invalid opts.name, slash not allowed: '+ opts.name);
     if (opts.name.indexOf('\\')>-1) throw new Error('invalid opts.name, slash not allowed: '+ opts.name);
     if (path && !fn) fn = NodePath.basename(path);
     if (path && !dir) dir = NodePath.dirname(path);
-    if (!dir) dir = Util.osConfigPath(opts.name); // do not mkdir
+    if (!dir) dir = osConfigPath(opts.name); // do not mkdir
     if (!fn) fn = MyConfig.config_fn;
     if (fn && !ext) ext = NodePath.extname(fn);
     if (!['.ini','.json'].includes(ext)) throw new Error(`only ini/json supported: ${fn}`);
@@ -497,7 +506,7 @@ class MyConfig
       case '.ini': map = Ini.decode(str,map); break;
       case '.json': map = Json.decode(str,map); break;
     }
-    if (!Util.isMap(map)) throw new Error('failed to parse: '+path);
+    if (!isMap(map)) throw new Error('failed to parse: '+path);
 
     // instanciate
     let params = { ...opts };
@@ -559,7 +568,7 @@ class MyConfig
   static _assertPathInConfigDir(fn, name)
   {
     const resolved = NodePath.resolve(fn);
-    const configDir = Util.osConfigPath(name);
+    const configDir = osConfigPath(name);
     const normalizedDir = configDir.endsWith(NodePath.sep)
       ? configDir : configDir + NodePath.sep;
     if (!resolved.startsWith(normalizedDir) && resolved !== configDir)

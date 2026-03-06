@@ -314,6 +314,16 @@ describe('MyConfig (comprehensive)', function()
     {
       Assert.throws(() => cfg.delete(null), { message: /invalid key/ });
     });
+
+    it('delete marks key dirty', function()
+    {
+      cfg.dirty = null;
+      cfg.set('deltest', 'val');
+      cfg.dirty = null;
+      Assert.strictEqual(cfg.dirty, 0);
+      Assert.strictEqual(cfg.delete('deltest'), true);
+      Assert.strictEqual(cfg.dirty, 1);
+    });
   });
 
   // ── dirty ─────────────────────────────────────────────────────────
